@@ -13,7 +13,7 @@ module CPU(
     input logic [31:0] dm_rdata;    // read data
 );
 
-// PC
+/** PC */
 logic [31:0] PC;
 assign im_addr = PC;
 
@@ -47,7 +47,7 @@ assign rs2 = instr[24:20];
 assign funct7 = instr[31:25];
 
 
-// register file
+/** register file */
 logic [31:0] rs1_data;
 logic [31:0] rs2_data;
 
@@ -65,7 +65,7 @@ regfile u_regfile(
     .rd_data(write_data)
 );
 
-// immediate generator
+/** immediate generator */
 logic [31:0] imm;
 
 imm_gen u_imm(
@@ -74,6 +74,60 @@ imm_gen u_imm(
 );
 
 
+/** Control Unit */
+logic [1:0] ALUOp;
+logic ALUSrc;
+logic Branch;
+logic MemWrite;
+logic MemRead;
+logic MemToReg;
+// logic FALUEnable;
 
+Control_Unit u_ctrl(
+    .opcode(opcode),
+    .ALUOp(ALUOp),
+    .ALUSrc(ALUSrc),
+    .Branch(Branch),
+    .MemWrite(MemWrite),
+    .MemRead(MemRead),
+    .MemToReg(MemToReg),
+    .RegWrite(reg_write),
+    .FALUEnable()
+);
+
+/** ALU Control Unit */
+logic [31:0] ALUControl;
+
+ALU_Control_Unit u_aluctrl(
+    .ALUOp(ALUOp),
+    .funct7(funct7),
+    .funct3(funct3),
+    .ALUControl(ALUControl)
+);
+
+
+/** ALU */
+// ALU operand mux
+logic [31:0] alu_in2;
+assign alu_in2 = (ALUSrc) ? imm : rs2_data;
+
+logic [31:0] alu_result;
+logic zero;
+
+ALU u_alu(
+    .rs1(rs1_data),
+    .rs2(alu_in2),
+    .ALUControl(ALUControl),
+    .rd(alu_result),
+    .zero(zero)
+);
+
+/** data memory */
+assign dm_addr = alu_result;
+assign dm_wdata = rs2_data;
+assing dm_we = MemWrite;
+
+// writeback mux 
+assign write_data = (MemToReg) ? dm_rdata : alu_result;
 
 endmodule
