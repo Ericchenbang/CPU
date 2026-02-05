@@ -31,6 +31,9 @@ always_comb begin
         2'b11: begin
             ALUControl = {1'b0, funct3};
         end
+        default: begin
+            ALUControl = ADD;
+        end
     endcase
 end
 endmodule

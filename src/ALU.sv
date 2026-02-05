@@ -52,6 +52,9 @@ always_comb begin
         AND: begin
             rd = rs1 & rs2;
         end
+        default: begin
+            rd = 32'b0;
+        end
     endcase
 end
 

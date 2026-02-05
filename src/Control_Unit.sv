@@ -1,4 +1,4 @@
-module Countrol_Unit(
+module Control_Unit(
     input [6:0] opcode,
 
     output logic [1:0] ALUOp,       // 0: add for lw/sw, 1: sub for branch, 
