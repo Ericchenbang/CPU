@@ -9,7 +9,7 @@ module CPU(
     // data memory
     output logic [31:0] dm_addr;
     output logic [31:0] dm_wdata;   // write data
-    output logic dm_we,             // write enable
+    output logic [3:0] dm_web,             // write enable mask
     input logic [31:0] dm_rdata;    // read data
 );
 
@@ -21,15 +21,20 @@ module CPU(
 // IF                   //
 //----------------------//
 logic [31:0] PC;
-assign im_addr = PC;
 
 logic [31:0] PC_next;
 
 logic [31:0] pc4;
-assign pc4 = PC + 4;
 
 logic [31:0] pc_imm;
-assign pc_imm = PC + imm;
+
+logic eq;
+logic lt;
+logic ltu;
+
+logic take_branch;
+
+logic [1:0] PCSel;
 
 //----------------------//
 // ID                   //
@@ -48,7 +53,7 @@ logic [6:0] funct7;
 logic [31:0] rs1_data;
 logic [31:0] rs2_data;
 
-logic reg_write;
+logic RegWrite;
 logic [31:0] write_data;
 
 /** immediate generator */
@@ -59,13 +64,14 @@ logic [31:0] imm;
 //----------------------//
 /** Control Unit */
 logic [1:0] ALUOp;
-logic ALUSrc;
+logic [1:0] ALUSrcA;
+logic ALUSrcB;
 logic Branch;
 logic Jal;
 logic Jalr;
 logic MemWrite;
 logic MemRead;
-logic MemToReg;
+logic [1:0] ResultSrc;
 // logic FALUEnable;
 
 /** ALU Control Unit */
@@ -73,6 +79,7 @@ logic [3:0] ALUControl;
 
 /** ALU */
 // ALU operand mux
+logic [31:0] alu_in1;
 logic [31:0] alu_in2;
 
 logic [31:0] alu_result;
@@ -85,7 +92,7 @@ logic zero;
 //----------------------//
 // WB                   //
 //----------------------//
-
+logic [31:0] load_data_final;
 
 //////////////////////////////////////////////////
 // Logic                                        //
@@ -95,13 +102,9 @@ logic zero;
 // IF                   //
 //----------------------//
 
-logic eq;
-logic lt;
-logic ltu;
-
-logic take_branch;
-
-logic [1:0] PCSel;
+assign im_addr = PC;
+assign pc4 = PC + 32'd4;
+assign pc_imm = PC + imm;
 
 comparator u_com(
     .rs1(rs1_data),
@@ -162,7 +165,7 @@ regfile u_regfile(
     .rs2_addr(rs2),
     .rs1_data(rs1_data),
     .rs2_data(rs2_data),
-    .we(reg_write),
+    .we(RegWrite),
     .rd_addr(rd),
     .rd_data(write_data)
 );
@@ -178,14 +181,15 @@ imm_gen u_imm(
 Control_Unit u_ctrl(
     .opcode(opcode),
     .ALUOp(ALUOp),
-    .ALUSrc(ALUSrc),
+    .ALUSrcA(ALUSrcA),
+    .ALUSrcB(ALUSrcB),
     .Branch(Branch),
     .Jal(Jal),
     .Jalr(Jalr),
     .MemWrite(MemWrite),
     .MemRead(MemRead),
-    .MemToReg(MemToReg),
-    .RegWrite(reg_write),
+    .ResultSrc(ResultSrc),
+    .RegWrite(RegWrite),
     .FALUEnable()
 );
 
@@ -196,10 +200,20 @@ ALU_Control_Unit u_aluctrl(
     .ALUControl(ALUControl)
 );
 
+
+always_comb begin
+    case (ALUSrcA) 
+        2'b00: alu_in1 = rs1_data;
+        2'b01: alu_in1 = PC;
+        2'b10: alu_in1 = 32'b0;
+        default: alu_in1 = rs1_data;
+    endcase
+end
+
 assign alu_in2 = (ALUSrc) ? imm : rs2_data;
 
 ALU u_alu(
-    .rs1(rs1_data),
+    .rs1(alu_in1),
     .rs2(alu_in2),
     .ALUControl(ALUControl),
     .rd(alu_result),
@@ -211,13 +225,34 @@ ALU u_alu(
 //----------------------//
 /** data memory */
 assign dm_addr = alu_result;
-assign dm_wdata = rs2_data;
-assign dm_we = MemWrite;
+
+store_data u_store_data(
+    .funct3(funct3),
+    .MemWrite(MemWrite),
+    .rs2_data(rs2_data),
+    .dm_web(dm_web),
+    .dm_wdata(dm_wdata)
+);
 
 //----------------------//
 // WB                   //
 //----------------------//
+
+load_data u_load_data(
+    .dm_rdata(dm_rdata),
+    .funct3(funct3),
+    .alu_result(alu_result),
+    .load_data_final(load_data_final)
+);
+
 // writeback mux 
-assign write_data = (MemToReg) ? dm_rdata : alu_result;
+always_comb begin
+    case (ResultSrc)
+        2'b00: write_data = alu_result;
+        2'b01: write_data = load_data_final;
+        2'b10: write_data = pc4;
+        default: write_data = 32'b0;
+    endcase
+end
 
 endmodule

@@ -29,7 +29,13 @@ always_comb begin
             ALUControl = {funct7[5], funct3};
         end
         2'b11: begin
-            ALUControl = {1'b0, funct3};
+            // distinguish SRLI, SRAI
+            if (funct3 == 3'b101) begin         
+                ALUControl = {funct7[5], funct3};
+            end
+            else begin
+                ALUControl = {1'b0, funct3};
+            end
         end
         default: begin
             ALUControl = ADD;
