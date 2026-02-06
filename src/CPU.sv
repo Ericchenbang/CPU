@@ -13,22 +13,27 @@ module CPU(
     input logic [31:0] dm_rdata;    // read data
 );
 
-/** PC */
+//////////////////////////////////////////
+// Signal Declaration                   //
+//////////////////////////////////////////
+
+//----------------------//
+// IF                   //
+//----------------------//
 logic [31:0] PC;
 assign im_addr = PC;
 
-always_ff @(posedge clk or posedge rst) begin
-    if (rst) begin
-        PC <= 0;
-    end
-    else begin
-        PC <= PC + 4;   // ?
-    end
-end
+logic [31:0] PC_next;
 
-//------------------------------------//
-// ID
-//------------------------------------//
+logic [31:0] pc4;
+assign pc4 = PC + 4;
+
+logic [31:0] pc_imm;
+assign pc_imm = PC + imm;
+
+//----------------------//
+// ID                   //
+//----------------------//
 logic [31:0] instr;
 assign instr = im_rdata;
 
@@ -39,20 +44,117 @@ logic [4:0] rs1;
 logic [4:0] rs2;
 logic [6:0] funct7;
 
-assign opcode = instr[6:0];
-assign rd = instr[11:7];
-assign funct3 = instr[14:12];
-assign rs1 = instr[19:15];
-assign rs2 = instr[24:20];
-assign funct7 = instr[31:25];
-
-
 /** register file */
 logic [31:0] rs1_data;
 logic [31:0] rs2_data;
 
 logic reg_write;
 logic [31:0] write_data;
+
+/** immediate generator */
+logic [31:0] imm;
+
+//----------------------//
+// EX                   //
+//----------------------//
+/** Control Unit */
+logic [1:0] ALUOp;
+logic ALUSrc;
+logic Branch;
+logic Jal;
+logic Jalr;
+logic MemWrite;
+logic MemRead;
+logic MemToReg;
+// logic FALUEnable;
+
+/** ALU Control Unit */
+logic [3:0] ALUControl;
+
+/** ALU */
+// ALU operand mux
+logic [31:0] alu_in2;
+
+logic [31:0] alu_result;
+logic zero;
+
+//----------------------//
+// MEM                  //
+//----------------------//
+
+//----------------------//
+// WB                   //
+//----------------------//
+
+
+//////////////////////////////////////////////////
+// Logic                                        //
+//////////////////////////////////////////////////
+
+//----------------------//
+// IF                   //
+//----------------------//
+
+logic eq;
+logic lt;
+logic ltu;
+
+logic take_branch;
+
+logic [1:0] PCSel;
+
+comparator u_com(
+    .rs1(rs1_data),
+    .rs2(rs2_data),
+    .eq(eq),
+    .lt(lt),
+    .ltu(ltu)
+);
+
+branch_decision u_br_dec(
+    .Branch(Branch),
+    .funct3(funct3),
+    .eq(eq),
+    .lt(lt),
+    .ltu(ltu),
+    .take_branch(take_branch)
+);
+
+pc_select u_pc_sel(
+    .Branch(Branch),
+    .take_branch(take_branch),
+    .Jal(Jal),
+    .Jalr(Jalr),
+    .PCSel(PCSel)
+);
+
+pc_mux u_pc_mux(
+    .PCSel(PCSel),
+    .pc4(pc4),
+    .pc_imm(pc_imm),
+    .ALU_Result(alu_result),
+    .pc_next(PC_next)
+);
+
+
+always_ff @(posedge clk or posedge rst) begin
+    if (rst) begin
+        PC <= 0;
+    end
+    else begin
+        PC <= PC_next;
+    end
+end
+
+//----------------------//
+// ID                   //
+//----------------------//
+assign opcode = instr[6:0];
+assign rd = instr[11:7];
+assign funct3 = instr[14:12];
+assign rs1 = instr[19:15];
+assign rs2 = instr[24:20];
+assign funct7 = instr[31:25];
 
 regfile u_regfile(
     .clk(clk),
@@ -65,38 +167,27 @@ regfile u_regfile(
     .rd_data(write_data)
 );
 
-/** immediate generator */
-logic [31:0] imm;
-
 imm_gen u_imm(
     .instr(instr),
     .imm(imm)
 );
 
-
-/** Control Unit */
-logic [1:0] ALUOp;
-logic ALUSrc;
-logic Branch;
-logic MemWrite;
-logic MemRead;
-logic MemToReg;
-// logic FALUEnable;
-
+//----------------------//
+// EX                   //
+//----------------------//
 Control_Unit u_ctrl(
     .opcode(opcode),
     .ALUOp(ALUOp),
     .ALUSrc(ALUSrc),
     .Branch(Branch),
+    .Jal(Jal),
+    .Jalr(Jalr),
     .MemWrite(MemWrite),
     .MemRead(MemRead),
     .MemToReg(MemToReg),
     .RegWrite(reg_write),
     .FALUEnable()
 );
-
-/** ALU Control Unit */
-logic [31:0] ALUControl;
 
 ALU_Control_Unit u_aluctrl(
     .ALUOp(ALUOp),
@@ -105,14 +196,7 @@ ALU_Control_Unit u_aluctrl(
     .ALUControl(ALUControl)
 );
 
-
-/** ALU */
-// ALU operand mux
-logic [31:0] alu_in2;
 assign alu_in2 = (ALUSrc) ? imm : rs2_data;
-
-logic [31:0] alu_result;
-logic zero;
 
 ALU u_alu(
     .rs1(rs1_data),
@@ -122,11 +206,17 @@ ALU u_alu(
     .zero(zero)
 );
 
+//----------------------//
+// MEM                  //
+//----------------------//
 /** data memory */
 assign dm_addr = alu_result;
 assign dm_wdata = rs2_data;
-assing dm_we = MemWrite;
+assign dm_we = MemWrite;
 
+//----------------------//
+// WB                   //
+//----------------------//
 // writeback mux 
 assign write_data = (MemToReg) ? dm_rdata : alu_result;
 

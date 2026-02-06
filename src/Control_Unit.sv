@@ -8,6 +8,8 @@ module Control_Unit(
     
     output logic ALUSrc,            // 0: rs2, 1: imm
     output logic Branch,
+    output logic Jal,
+    output logic Jalr,
     output logic MemWrite,
     output logic MemRead,
     output logic MemToReg,     
@@ -17,6 +19,8 @@ module Control_Unit(
  
 
 always_comb begin
+    Jal = 1'b0;
+    Jalr = 1'b0;
     unique case (opcode)
         // R-type
         7'b0110011: begin
@@ -56,6 +60,7 @@ always_comb begin
             ALUOp = 2'b00;
             ALUSrc = 1'b0;
             Branch = 1'b1;
+            Jalr = 1'b1;
             MemWrite = 1'b0;
             MemRead = 1'b0;
             MemToReg = 1'b0;
@@ -111,6 +116,7 @@ always_comb begin
             ALUOp = 2'b00;
             ALUSrc = 1'b0;
             Branch = 1'b1;
+            Jal = 1'b1;
             MemWrite = 1'b0;
             MemRead = 1'b0;
             MemToReg = 1'b0;
