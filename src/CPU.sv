@@ -18,65 +18,69 @@ module CPU(
 //////////////////////////////////////////
 
 //----------------------//
-// IF                   //
+// IF Stage Signals     //
 //----------------------//
-logic [31:0] PC;
-
-logic [31:0] PC_next;
-
-logic [31:0] pc4;
-
-logic [31:0] pc_imm;
-
-logic eq;
-logic lt;
-logic ltu;
-
-logic take_branch;
-
-logic [1:0] PCSel;
+logic [31:0] IF_PC;
+logic [31:0] IF_pc4;
+logic [31:0] IF_PC_next;
+logic [31:0] IF_instr;
 
 //----------------------//
-// ID                   //
+// IF/ID Pipeline Reg   //
 //----------------------//
-logic [31:0] instr;
+logic [31:0] ID_PC;
+logic [31:0] ID_pc4;
+logic [31:0] ID_instr;
 
-logic [6:0] opcode;
-logic [4:0] rd;
-logic [2:0] funct3;
-logic [4:0] rs1;
-logic [4:0] rs2;
-logic [6:0] funct7;
+// Hazard control signals (add logic later)
+logic IF_ID_stall;
+logic IF_ID_flush;
+
+
+//----------------------//
+// ID Stage Signals     //
+//----------------------//
+logic [6:0] ID_opcode;
+logic [4:0] ID_rd;
+logic [2:0] ID_funct3;
+logic [4:0] ID_rs1;
+logic [4:0] ID_rs2;
+logic [6:0] ID_funct7;
 
 /** register file */
-logic [31:0] rs1_data;
-logic [31:0] rs2_data;
-
-logic RegWrite;
-logic [31:0] write_data;
+logic [31:0] ID_rs1_data;
+logic [31:0] ID_rs2_data;
 
 /** immediate generator */
-logic [31:0] imm;
+logic [31:0] ID_imm;
+
+/** Control Unit */
+logic [1:0] ID_ALUOp;
+logic [1:0] ID_ALUSrcA;
+logic ID_ALUSrcB;
+logic ID_Branch;
+logic ID_Jal;
+logic ID_Jalr;
+logic ID_MemWrite;
+logic ID_MemRead;
+logic ID_RegWrite;
+logic [1:0] ID_ResultSrc;
+// logic ID_FALUEnable;
+
+/** ALU Control Unit */
+logic [3:0] ID_ALUControl;
+
+/** Branch decision signals */
+logic [31:0] ID_pc_imm;
+logic ID_eq;
+logic ID_lt;
+logic ID_ltu;
+logic ID_take_branch;
+logic [1:0] ID_PCSel;
 
 //----------------------//
 // EX                   //
 //----------------------//
-/** Control Unit */
-logic [1:0] ALUOp;
-logic [1:0] ALUSrcA;
-logic ALUSrcB;
-logic Branch;
-logic Jal;
-logic Jalr;
-logic MemWrite;
-logic MemRead;
-logic [1:0] ResultSrc;
-// logic FALUEnable;
-
-/** ALU Control Unit */
-logic [3:0] ALUControl;
-
-/** ALU */
 /* ALU operand mux */
 logic [31:0] alu_in1;
 logic [31:0] alu_in2;
@@ -90,6 +94,9 @@ logic [31:0] alu_result;
 //----------------------//
 // WB                   //
 //----------------------//
+logic WB_RegWrite;
+logic [5:0] WB_rd;
+logic [31:0] WB_write_data;
 logic [31:0] load_data_final;
 
 //////////////////////////////////////////////////
@@ -97,108 +104,127 @@ logic [31:0] load_data_final;
 //////////////////////////////////////////////////
 
 //----------------------//
-// IF                   //
+// IF State Logic       //
 //----------------------//
+assign im_addr = IF_PC;
+assign IF_instr = im_rdata;
+assign IF_pc4 = IF_PC + 32'd4;
 
-assign im_addr = PC;
-assign pc4 = PC + 32'd4;
-assign pc_imm = PC + imm;
-
-comparator u_com(
-    .rs1(rs1_data),
-    .rs2(rs2_data),
-    .eq(eq),
-    .lt(lt),
-    .ltu(ltu)
-);
-
-branch_decision u_br_dec(
-    .Branch(Branch),
-    .funct3(funct3),
-    .eq(eq),
-    .lt(lt),
-    .ltu(ltu),
-    .take_branch(take_branch)
-);
-
-pc_select u_pc_sel(
-    .Branch(Branch),
-    .take_branch(take_branch),
-    .Jal(Jal),
-    .Jalr(Jalr),
-    .PCSel(PCSel)
-);
-
-pc_mux u_pc_mux(
-    .PCSel(PCSel),
-    .pc4(pc4),
-    .pc_imm(pc_imm),
-    .ALU_Result(alu_result),
-    .pc_next(PC_next)
-);
-
+/** PC update logic (simplified for now, we'll improve it) */
+assign IF_PC_next = IF_pc4;
 
 always_ff @(posedge clk or posedge rst) begin
     if (rst) begin
-        PC <= 0;
+        IF_PC <= 32'b0;
     end
-    else begin
-        PC <= PC_next;
+    else if (!IF_ID_stall) begin
+        IF_PC <= IF_PC_next;
     end
 end
 
+
 //----------------------//
-// ID                   //
+// IF/ID Pipeline Reg   //
 //----------------------//
-assign instr = im_rdata;
-assign opcode = instr[6:0];
-assign rd = instr[11:7];
-assign funct3 = instr[14:12];
-assign rs1 = instr[19:15];
-assign rs2 = instr[24:20];
-assign funct7 = instr[31:25];
+// For now, set stall and flush to 0
+assign IF_ID_stall = 1'b0;
+assign IF_ID_flush = 1'b0;
+
+IF_ID_Reg u_IF_ID_Reg(
+    .clk(clk),
+    .rst(rst),
+    .stall(IF_ID_stall),
+    .flush(IF_ID_flush),
+    .IF_PC(IF_PC),
+    .IF_pc4(IF_pc4),
+    .IF_instr(IF_instr),
+    .ID_PC(ID_PC),
+    .ID_pc4(ID_pc4),
+    .ID_instr(ID_instr)
+);
+
+
+//----------------------//
+// ID Stage Logic       //
+//----------------------//
+assign ID_opcode = ID_instr[6:0];
+assign ID_rd = ID_instr[11:7];
+assign ID_funct3 = ID_instr[14:12];
+assign ID_rs1 = ID_instr[19:15];
+assign ID_rs2 = ID_instr[24:20];
+assign ID_funct7 = ID_instr[31:25];
 
 regfile u_regfile(
     .clk(clk),
-    .rs1_addr(rs1),
-    .rs2_addr(rs2),
-    .rs1_data(rs1_data),
-    .rs2_data(rs2_data),
-    .we(RegWrite),
-    .rd_addr(rd),
-    .rd_data(write_data)
+    .rs1_addr(ID_rs1),
+    .rs2_addr(ID_rs2),
+    .rs1_data(ID_rs1_data),
+    .rs2_data(ID_rs2_data),
+
+    // We'll add these signals later
+    .we(WB_RegWrite),
+    .rd_addr(WB_rd),
+    .rd_data(WB_write_data)
 );
 
 imm_gen u_imm(
-    .instr(instr),
-    .imm(imm)
+    .instr(ID_instr),
+    .imm(ID_imm)
+);
+
+
+Control_Unit u_ctrl(
+    .opcode(ID_opcode),
+    .ALUOp(ID_ALUOp),
+    .ALUSrcA(ID_ALUSrcA),
+    .ALUSrcB(ID_ALUSrcB),
+    .Branch(ID_Branch),
+    .Jal(ID_Jal),
+    .Jalr(ID_Jalr),
+    .MemWrite(ID_MemWrite),
+    .MemRead(ID_MemRead),
+    .ResultSrc(ID_ResultSrc),
+    .RegWrite(ID_RegWrite),
+    .FALUEnable()
+);
+
+ALU_Control_Unit u_aluctrl(
+    .ALUOp(ID_ALUOp),
+    .funct7(ID_funct7),
+    .funct3(ID_funct3),
+    .ALUControl(ID_ALUControl)
+);
+
+assign ID_pc_imm = ID_PC + ID_imm;
+
+comparator u_com(
+    .rs1(ID_rs1_data),
+    .rs2(ID_rs2_data),
+    .eq(ID_eq),
+    .lt(ID_lt),
+    .ltu(ID_ltu)
+);
+
+branch_decision u_br_dec(
+    .Branch(ID_Branch),
+    .funct3(ID_funct3),
+    .eq(ID_eq),
+    .lt(ID_lt),
+    .ltu(ID_ltu),
+    .take_branch(ID_take_branch)
+);
+
+pc_select u_pc_sel(
+    .Branch(ID_Branch),
+    .take_branch(ID_take_branch),
+    .Jal(ID_Jal),
+    .Jalr(ID_Jalr),
+    .PCSel(ID_PCSel)
 );
 
 //----------------------//
 // EX                   //
 //----------------------//
-Control_Unit u_ctrl(
-    .opcode(opcode),
-    .ALUOp(ALUOp),
-    .ALUSrcA(ALUSrcA),
-    .ALUSrcB(ALUSrcB),
-    .Branch(Branch),
-    .Jal(Jal),
-    .Jalr(Jalr),
-    .MemWrite(MemWrite),
-    .MemRead(MemRead),
-    .ResultSrc(ResultSrc),
-    .RegWrite(RegWrite),
-    .FALUEnable()
-);
-
-ALU_Control_Unit u_aluctrl(
-    .ALUOp(ALUOp),
-    .funct7(funct7),
-    .funct3(funct3),
-    .ALUControl(ALUControl)
-);
-
 
 always_comb begin
     case (ALUSrcA) 
@@ -216,6 +242,14 @@ ALU u_alu(
     .rs2(alu_in2),
     .ALUControl(ALUControl),
     .rd(alu_result)
+);
+
+pc_mux u_pc_mux(
+    .PCSel(PCSel),
+    .pc4(pc4),
+    .pc_imm(pc_imm),
+    .ALU_Result(alu_result),
+    .pc_next(PC_next)
 );
 
 //----------------------//
