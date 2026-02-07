@@ -11,7 +11,7 @@ module Control_Unit(
     output logic Jalr,
     output logic MemWrite,
     output logic MemRead,
-    output logic [1:0] ResultSrc,   // 0: ALU Result, 1: from memory, 2: PC + 4
+    output logic [1:0] ResultSrc,   // 0: ALU Result, 1: from memory, 2: PC + 4 (JALR, JAL)
     output logic RegWrite,
     output logic FALUEnable         // 0: not float operation, 1: need Float ALU
 );

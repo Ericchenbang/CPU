@@ -40,7 +40,6 @@ logic [1:0] PCSel;
 // ID                   //
 //----------------------//
 logic [31:0] instr;
-assign instr = im_rdata;
 
 logic [6:0] opcode;
 logic [4:0] rd;
@@ -151,6 +150,7 @@ end
 //----------------------//
 // ID                   //
 //----------------------//
+assign instr = im_rdata;
 assign opcode = instr[6:0];
 assign rd = instr[11:7];
 assign funct3 = instr[14:12];

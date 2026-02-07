@@ -12,9 +12,11 @@ always_comb begin
         2'b00: begin
             pc_next = pc4;
         end
+        // JAL
         2'b01: begin
             pc_next = pc_imm;
         end
+        // JALR
         2'b10: begin
             pc_next = {ALU_Result[31:1], 1'b0};
         end
