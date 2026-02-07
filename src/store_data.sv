@@ -2,6 +2,7 @@ module store_data(
     input [2:0] funct3,
     input MemWrite,
     input [31:0] rs2_data,
+    input [31:0] alu_result,
 
     output logic [3:0] dm_web,
     output logic [31:0] dm_wdata
@@ -28,9 +29,10 @@ always_comb begin
             end
             SH: begin
                 dm_wdata = {2{rs2_data[15:0]}};
-                case (alu_result[1]) 
-                    1'b0: dm_web = 4'b1100;
-                    1'b1: dm_web = 4'b0011;
+                case (alu_result[1:0]) 
+                    2'b00: dm_web = 4'b1100;
+                    2'b10: dm_web = 4'b0011;
+                    default: dm_web = 4'b1111;
                 endcase
             end
             SW: begin

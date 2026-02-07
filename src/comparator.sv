@@ -2,9 +2,9 @@ module comparator(
     input [31:0] rs1,
     input [31:0] rs2,
 
-    output eq,
-    output lt,
-    output ltu
+    output logic eq,
+    output logic lt,
+    output logic ltu
 );
 
 assign eq = (rs1 == rs2);

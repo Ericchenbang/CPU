@@ -3,8 +3,7 @@ module ALU(
     input [31:0] rs2,
     input [3:0] ALUControl,
 
-    output logic [31:0] rd,
-    output logic zero
+    output logic [31:0] rd
 );
 
 localparam ADD = 4'b0000;
@@ -17,8 +16,6 @@ localparam SRL = 4'b0101;
 localparam SRA = 4'b1101;
 localparam OR = 4'b0110;
 localparam AND = 4'b0111;
-
-assign zero = (rs1 == rs2);
 
 always_comb begin
     unique case (ALUControl) 
@@ -44,7 +41,7 @@ always_comb begin
             rd = $unsigned(rs1) >> rs2[4:0];
         end
         SRA: begin
-            rd = $signed(rs1) >> rs2[4:0];
+            rd = $signed(rs1) >>> rs2[4:0];
         end
         OR: begin
             rd = rs1 | rs2;

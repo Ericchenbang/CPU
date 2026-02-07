@@ -3,14 +3,14 @@ module CPU(
     input rst,
 
     // instruction memory
-    output logic [31:0] im_addr;
-    input logic [31:0] im_rdata;    // read data
+    output logic [31:0] im_addr,
+    input logic [31:0] im_rdata,    // read data
 
     // data memory
-    output logic [31:0] dm_addr;
-    output logic [31:0] dm_wdata;   // write data
-    output logic [3:0] dm_web,             // write enable mask
-    input logic [31:0] dm_rdata;    // read data
+    output logic [31:0] dm_addr,
+    output logic [31:0] dm_wdata,   // write data
+    output logic [3:0] dm_web,      // write enable mask
+    input logic [31:0] dm_rdata     // read data
 );
 
 //////////////////////////////////////////
@@ -78,12 +78,11 @@ logic [1:0] ResultSrc;
 logic [3:0] ALUControl;
 
 /** ALU */
-// ALU operand mux
+/* ALU operand mux */
 logic [31:0] alu_in1;
 logic [31:0] alu_in2;
 
 logic [31:0] alu_result;
-logic zero;
 
 //----------------------//
 // MEM                  //
@@ -210,14 +209,13 @@ always_comb begin
     endcase
 end
 
-assign alu_in2 = (ALUSrc) ? imm : rs2_data;
+assign alu_in2 = (ALUSrcB) ? imm : rs2_data;
 
 ALU u_alu(
     .rs1(alu_in1),
     .rs2(alu_in2),
     .ALUControl(ALUControl),
-    .rd(alu_result),
-    .zero(zero)
+    .rd(alu_result)
 );
 
 //----------------------//
@@ -230,6 +228,7 @@ store_data u_store_data(
     .funct3(funct3),
     .MemWrite(MemWrite),
     .rs2_data(rs2_data),
+    .alu_result(alu_result),
     .dm_web(dm_web),
     .dm_wdata(dm_wdata)
 );

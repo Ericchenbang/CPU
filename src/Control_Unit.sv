@@ -18,18 +18,15 @@ module Control_Unit(
  
 always_comb begin
     ALUOp = 2'b00;
-    ALUSrcA = 1'b0;
+    ALUSrcA = 2'b00;
     ALUSrcB = 1'b0;
-
     Branch = 1'b0;
     Jal = 1'b0;
     Jalr = 1'b0;
-
     MemWrite = 1'b0;
     MemRead = 1'b0;
-
     ResultSrc = 2'b00;
-
+    RegWrite = 1'b0;
     FALUEnable = 1'b0;
 
     case (opcode)
@@ -62,13 +59,11 @@ always_comb begin
         7'b0100011: begin
             ALUSrcB = 1'b1;
             MemWrite = 1'b1;
-            RegWrite = 1'b0;
         end
         // B-type: begin
         7'b1100011: begin
             ALUOp = 2'b01;
             Branch = 1'b1;
-            RegWrite = 1'b0;
         end
         // AUIPC
         7'b0010111: begin
