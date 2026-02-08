@@ -78,14 +78,39 @@ logic ID_ltu;
 logic ID_take_branch;
 logic [1:0] ID_PCSel;
 
+
 //----------------------//
-// EX                   //
+// ID/EX Pipeline Reg   //
+//----------------------//
+logic ID_EX_flush;
+
+logic [31:0] EX_PC;
+logic [31:0] EX_pc4;
+logic [31:0] EX_rs1_data;
+logic [31:0] EX_rs2_data;
+logic [31:0] EX_imm;
+
+logic [4:0] EX_rs1;
+logic [4:0] EX_rs2;
+logic [4:0] EX_rd;
+logic [2:0] EX_funct3;
+
+logic [3:0] EX_ALUControl;
+logic [1:0] EX_ALUSrcA;
+logic EX_ALUSrcB;
+logic EX_MemWrite;
+logic EX_MemRead;
+logic EX_RegWrite;
+logic [1:0] EX_ResultSrc;
+
+
+//----------------------//
+// EX State Signals     //
 //----------------------//
 /* ALU operand mux */
-logic [31:0] alu_in1;
-logic [31:0] alu_in2;
-
-logic [31:0] alu_result;
+logic [31:0] EX_alu_in1;
+logic [31:0] EX_alu_in2;
+logic [31:0] EX_alu_result;
 
 //----------------------//
 // MEM                  //
@@ -95,7 +120,7 @@ logic [31:0] alu_result;
 // WB                   //
 //----------------------//
 logic WB_RegWrite;
-logic [5:0] WB_rd;
+logic [4:0] WB_rd;
 logic [31:0] WB_write_data;
 logic [31:0] load_data_final;
 
@@ -222,26 +247,77 @@ pc_select u_pc_sel(
     .PCSel(ID_PCSel)
 );
 
+
 //----------------------//
-// EX                   //
+// ID/EX Pipeline Reg   //
+//----------------------//
+// For now, no flush (we'all add branch logic later)
+assign ID_EX_flush = 1'b0;
+
+ID_EX_Reg u_ID_EX_Reg(
+    .clk(clk),
+    .rst(rst),
+    .flush(ID_EX_flush),
+
+    .ID_PC(ID_PC),
+    .ID_pc4(ID_pc4),
+    .ID_rs1_data(ID_rs1_data),
+    .ID_rs2_data(ID_rs2_data),
+    .ID_imm(ID_imm),
+
+    .ID_rs1(ID_rs1),
+    .ID_rs2(ID_rs2),
+    .ID_rd(ID_rd),
+    .ID_funct3(ID_funct3),
+
+    .ID_ALUControl(ID_ALUControl),
+    .ID_ALUSrcA(ID_ALUSrcA),
+    .ID_ALUSrcB(ID_ALUSrcB),
+    .ID_MemWrite(ID_MemWrite),
+    .ID_MemRead(ID_MemRead),
+    .ID_RegWrite(ID_RegWrite),
+    .ID_ResultSrc(ID_ResultSrc),
+
+    .EX_PC(EX_PC),
+    .EX_pc4(EX_pc4),
+    .EX_rs1_data(EX_rs1_data),
+    .EX_rs2_data(EX_rs2_data),
+    .EX_imm(EX_imm),
+
+    .EX_rs1(EX_rs1),
+    .EX_rs2(EX_rs2),
+    .EX_rd(EX_rd),
+    .EX_funct3(EX_funct3),
+
+    .EX_ALUControl(EX_ALUControl),
+    .EX_ALUSrcA(EX_ALUSrcA),
+    .EX_ALUSrcB(EX_ALUSrcB),
+    .EX_MemWrite(EX_MemWrite),
+    .EX_MemRead(EX_MemRead),
+    .EX_RegWrite(EX_RegWrite),
+    .EX_ResultSrc(EX_ResultSrc)
+);
+
+//----------------------//
+// EX Stage             //
 //----------------------//
 
 always_comb begin
-    case (ALUSrcA) 
-        2'b00: alu_in1 = rs1_data;
-        2'b01: alu_in1 = PC;
-        2'b10: alu_in1 = 32'b0;
-        default: alu_in1 = rs1_data;
+    case (EX_ALUSrcA) 
+        2'b00: EX_alu_in1 = EX_rs1_data;
+        2'b01: EX_alu_in1 = EX_PC;
+        2'b10: EX_alu_in1 = 32'b0;
+        default: EX_alu_in1 = EX_rs1_data;
     endcase
 end
 
-assign alu_in2 = (ALUSrcB) ? imm : rs2_data;
+assign EX_alu_in2 = (EX_ALUSrcB) ? EX_imm : EX_rs2_data;
 
 ALU u_alu(
-    .rs1(alu_in1),
-    .rs2(alu_in2),
-    .ALUControl(ALUControl),
-    .rd(alu_result)
+    .rs1(EX_alu_in1),
+    .rs2(EX_alu_in2),
+    .ALUControl(EX_ALUControl),
+    .rd(EX_alu_result)
 );
 
 pc_mux u_pc_mux(
@@ -253,16 +329,16 @@ pc_mux u_pc_mux(
 );
 
 //----------------------//
-// MEM                  //
+// MEM Stage            //
 //----------------------//
 /** data memory */
-assign dm_addr = alu_result;
+assign dm_addr = EX_alu_result;
 
 store_data u_store_data(
-    .funct3(funct3),
-    .MemWrite(MemWrite),
-    .rs2_data(rs2_data),
-    .alu_result(alu_result),
+    .funct3(EX_funct3),
+    .MemWrite(EX_MemWrite),
+    .rs2_data(EX_rs2_data),
+    .alu_result(EX_alu_result),
     .dm_web(dm_web),
     .dm_wdata(dm_wdata)
 );
@@ -270,21 +346,23 @@ store_data u_store_data(
 //----------------------//
 // WB                   //
 //----------------------//
+assign WB_RegWrite = EX_RegWrite;
+assign WB_rd = EX_rd;
 
 load_data u_load_data(
     .dm_rdata(dm_rdata),
-    .funct3(funct3),
-    .alu_result(alu_result),
+    .funct3(EX_funct3),
+    .alu_result(EX_alu_result),
     .load_data_final(load_data_final)
 );
 
 // writeback mux 
 always_comb begin
-    case (ResultSrc)
-        2'b00: write_data = alu_result;
-        2'b01: write_data = load_data_final;
-        2'b10: write_data = pc4;
-        default: write_data = 32'b0;
+    case (EX_ResultSrc)
+        2'b00: WB_write_data = EX_alu_result;
+        2'b01: WB_write_data = load_data_final;
+        2'b10: WB_write_data = EX_pc4;
+        default: WB_write_data = 32'b0;
     endcase
 end
 
