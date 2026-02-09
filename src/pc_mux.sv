@@ -1,5 +1,5 @@
 module pc_mux(
-    input [1:0] PCSel,
+    input [1:0]  PCSel,
     input [31:0] pc4,
     input [31:0] pc_imm,
     input [31:0] ALU_Result,

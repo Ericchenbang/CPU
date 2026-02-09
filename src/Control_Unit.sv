@@ -1,19 +1,19 @@
 module Control_Unit(
-    input [6:0] opcode,
+    input  logic [6:0]  opcode,
 
-    output logic [1:0] ALUOp,       // 0: add for lw/sw, 1: sub for branch, 
+    output logic [1:0]  ALUOp,      // 0: add for lw/sw, 1: sub for branch, 
                                     // 2: R-type, 3: Second prat I-type
                                     
-    output logic [1:0] ALUSrcA,     // 0: rs1_data, 1: PC (AUIPC), 2: 0 (LUI)
-    output logic ALUSrcB,           // 0: rs2, 1: imm
-    output logic Branch,
-    output logic Jal,
-    output logic Jalr,
-    output logic MemWrite,
-    output logic MemRead,
-    output logic [1:0] ResultSrc,   // 0: ALU Result, 1: from memory, 2: PC + 4 (JALR, JAL)
-    output logic RegWrite,
-    output logic FALUEnable         // 0: not float operation, 1: need Float ALU
+    output logic [1:0]  ALUSrcA,    // 0: rs1_data, 1: PC (AUIPC), 2: 0 (LUI)
+    output logic        ALUSrcB,           // 0: rs2, 1: imm
+    output logic        Branch,
+    output logic        Jal,
+    output logic        Jalr,
+    output logic        MemWrite,
+    output logic        MemRead,
+    output logic [1:0]  ResultSrc,   // 0: ALU Result, 1: from memory, 2: PC + 4 (JALR, JAL)
+    output logic        RegWrite,
+    output logic        FALUEnable         // 0: not float operation, 1: need Float ALU
 );
  
 always_comb begin
@@ -113,6 +113,5 @@ always_comb begin
 
     endcase
 end
-
 
 endmodule

@@ -1,15 +1,15 @@
 module load_data(
-    input MemRead,
+    input        MemRead,
     input [31:0] dm_rdata,
-    input [2:0] funct3,
+    input [2:0]  funct3,
     input [31:0] alu_result,
 
     output logic [31:0] load_data_final
 );
 
-localparam LW = 3'b010;
-localparam LB = 3'b000;
-localparam LH = 3'b001;
+localparam LW  = 3'b010;
+localparam LB  = 3'b000;
+localparam LH  = 3'b001;
 localparam LBU = 3'b100;
 localparam LHU = 3'b101;
 
@@ -20,7 +20,9 @@ always_comb begin
         load_data_final = dm_rdata;
 
         case (funct3)
-            LW: load_data_final = dm_rdata;
+            LW: begin
+                load_data_final = dm_rdata;
+            end
             LB: begin
                 case (alu_result[1:0]) 
                     2'b00: load_data_final = {{24{dm_rdata[7]}}, dm_rdata[7:0]};

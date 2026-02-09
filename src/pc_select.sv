@@ -4,7 +4,7 @@ module pc_select(
     input Jal,
     input Jalr,
 
-    // 0: PC + 4, 1: PC + imm, 2: ALU_result
+    // 2'b00: PC + 4, 2'b01: PC + imm, 2'b10: ALU_result
     output logic [1:0] PCSel
 );
 
@@ -22,4 +22,5 @@ always_comb begin
         PCSel = 2'b00;
     end
 end
+
 endmodule

@@ -1,22 +1,21 @@
 module CPU(
-    input clk,
-    input rst,
+    input logic clk,
+    input logic rst,
 
     // instruction memory
     output logic [31:0] im_addr,
-    input logic [31:0] im_rdata,    // read data
+    input  logic [31:0] im_rdata,    // read data
 
     // data memory
     output logic [31:0] dm_addr,
     output logic [31:0] dm_wdata,   // write data
-    output logic [3:0] dm_web,      // write enable mask
-    input logic [31:0] dm_rdata     // read data
+    output logic [3:0]  dm_web,      // write enable mask
+    input  logic [31:0] dm_rdata     // read data
 );
 
 //////////////////////////////////////////
 // Signal Declaration                   //
 //////////////////////////////////////////
-
 //----------------------//
 // IF Stage Signals     //
 //----------------------//
@@ -155,7 +154,6 @@ logic [31:0] WB_write_data;
 //////////////////////////////////////////////////
 // Logic                                        //
 //////////////////////////////////////////////////
-
 //----------------------//
 // IF State Logic       //
 //----------------------//
@@ -214,12 +212,12 @@ assign ID_funct7 = ID_instr[31:25];
 
 regfile u_regfile(
     .clk(clk),
+
     .rs1_addr(ID_rs1),
     .rs2_addr(ID_rs2),
     .rs1_data(ID_rs1_data),
     .rs2_data(ID_rs2_data),
 
-    // We'll add these signals later
     .we(WB_RegWrite),
     .rd_addr(WB_rd),
     .rd_data(WB_write_data)
@@ -227,12 +225,15 @@ regfile u_regfile(
 
 imm_gen u_imm(
     .instr(ID_instr),
+
     .imm(ID_imm)
 );
 
+assign ID_pc_imm = ID_PC + ID_imm;
 
 Control_Unit u_ctrl(
     .opcode(ID_opcode),
+
     .ALUOp(ID_ALUOp),
     .ALUSrcA(ID_ALUSrcA),
     .ALUSrcB(ID_ALUSrcB),
@@ -250,14 +251,14 @@ ALU_Control_Unit u_aluctrl(
     .ALUOp(ID_ALUOp),
     .funct7(ID_funct7),
     .funct3(ID_funct3),
+
     .ALUControl(ID_ALUControl)
 );
-
-assign ID_pc_imm = ID_PC + ID_imm;
 
 comparator u_com(
     .rs1(ID_rs1_data),
     .rs2(ID_rs2_data),
+
     .eq(ID_eq),
     .lt(ID_lt),
     .ltu(ID_ltu)
@@ -269,6 +270,7 @@ branch_decision u_br_dec(
     .eq(ID_eq),
     .lt(ID_lt),
     .ltu(ID_ltu),
+
     .take_branch(ID_take_branch)
 );
 
@@ -277,6 +279,7 @@ pc_select u_pc_sel(
     .take_branch(ID_take_branch),
     .Jal(ID_Jal),
     .Jalr(ID_Jalr),
+
     .PCSel(ID_PCSel)
 );
 
@@ -334,7 +337,6 @@ ID_EX_Reg u_ID_EX_Reg(
 //----------------------//
 // EX Stage             //
 //----------------------//
-
 always_comb begin
     case (EX_ALUSrcA) 
         2'b00: EX_alu_in1 = EX_rs1_data;
@@ -350,6 +352,7 @@ ALU u_alu(
     .rs1(EX_alu_in1),
     .rs2(EX_alu_in2),
     .ALUControl(EX_ALUControl),
+
     .rd(EX_alu_result)
 );
 
@@ -394,6 +397,7 @@ store_data u_store_data(
     .MemWrite(MEM_MemWrite),
     .rs2_data(MEM_rs2_data),
     .alu_result(MEM_alu_result),
+
     .dm_web(dm_web),
     .dm_wdata(dm_wdata)
 );
@@ -402,6 +406,7 @@ load_data u_load_data(
     .dm_rdata(dm_rdata),
     .funct3(MEM_funct3),
     .alu_result(MEM_alu_result),
+    
     .load_data_final(MEM_load_data)
 );
 

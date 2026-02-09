@@ -1,5 +1,5 @@
 module imm_gen(
-    input logic [31:0] instr,
+    input  logic [31:0] instr,
     output logic [31:0] imm
 );
 

@@ -1,10 +1,10 @@
 module store_data(
-    input [2:0] funct3,
-    input MemWrite,
+    input [2:0]  funct3,
+    input        MemWrite,
     input [31:0] rs2_data,
     input [31:0] alu_result,
 
-    output logic [3:0] dm_web,
+    output logic [3:0]  dm_web,
     output logic [31:0] dm_wdata
 );
 
@@ -20,6 +20,7 @@ always_comb begin
         case(funct3)
             SB: begin
                 dm_wdata = {4{rs2_data[7:0]}};
+
                 case (alu_result[1:0]) 
                     2'b00: dm_web = 4'b1110;
                     2'b01: dm_web = 4'b1101;
@@ -29,6 +30,7 @@ always_comb begin
             end
             SH: begin
                 dm_wdata = {2{rs2_data[15:0]}};
+
                 case (alu_result[1:0]) 
                     2'b00: dm_web = 4'b1100;
                     2'b10: dm_web = 4'b0011;

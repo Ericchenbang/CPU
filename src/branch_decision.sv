@@ -1,17 +1,17 @@
 module branch_decision(
-    input Branch,
+    input       Branch,
     input [2:0] funct3,
-    input eq,
-    input lt,
-    input ltu,
+    input       eq,
+    input       lt,
+    input       ltu,
 
     output logic take_branch
 );
 
-localparam BEQ = 3'b000;
-localparam BNE = 3'b001;
-localparam BLT = 3'b100;
-localparam BGE = 3'b101;
+localparam BEQ  = 3'b000;
+localparam BNE  = 3'b001;
+localparam BLT  = 3'b100;
+localparam BGE  = 3'b101;
 localparam BLTU = 3'b110;
 localparam BGEU = 3'b111;
 
