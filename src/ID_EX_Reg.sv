@@ -50,7 +50,28 @@ module ID_EX_Reg(
 
 
 always_ff @(posedge clk or posedge rst) begin
-    if (rst or flush) begin
+    if (rst) begin
+        EX_PC <= 32'b0;
+        EX_pc4 <= 32'b0;
+        EX_rs1_data <= 32'b0;
+        EX_rs2_data <= 32'b0;
+        EX_imm <= 32'b0;
+
+        EX_rs1 <= 5'b0;
+        EX_rs2 <= 5'b0;
+        EX_rd <= 5'b0;
+        EX_funct3 <= 3'b0;
+
+        EX_ALUControl <= 4'b0;
+        EX_ALUSrcA <= 2'b0;
+        EX_ALUSrcB <= 1'b0;
+
+        EX_MemWrite <= 1'b0;
+        EX_MemRead <= 1'b0;
+        EX_RegWrite <= 1'b0;
+        EX_ResultSrc <= 2'b0;
+    end
+    else if (flush) begin
         EX_PC <= 32'b0;
         EX_pc4 <= 32'b0;
         EX_rs1_data <= 32'b0;

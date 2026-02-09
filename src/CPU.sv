@@ -112,17 +112,45 @@ logic [31:0] EX_alu_in1;
 logic [31:0] EX_alu_in2;
 logic [31:0] EX_alu_result;
 
+
 //----------------------//
-// MEM                  //
+// EX/MEM Pipeline Reg  //
 //----------------------//
+logic [31:0] MEM_pc4;
+logic [31:0] MEM_alu_result;
+logic [31:0] MEM_rs2_data;
+logic [4:0] MEM_rd;
+logic [2:0] MEM_funct3;
+logic MEM_MemWrite;
+logic MEM_MemRead;
+logic MEM_RegWrite;
+logic [1:0] MEM_ResultSrc;
+
+//----------------------//
+// MEM Stage Signals    //
+//----------------------//
+logic [31:0] MEM_load_data;
+
+
+//----------------------//
+// MEM/WB Pipeline Reg  //
+//----------------------//
+logic [31:0] WB_pc4;
+logic [31:0] WB_alu_result;
+logic [31:0] WB_load_data;
+logic [4:0] WB_rd;
+logic WB_RegWrite;
+logic [1:0] WB_ResultSrc;
 
 //----------------------//
 // WB                   //
 //----------------------//
-logic WB_RegWrite;
-logic [4:0] WB_rd;
 logic [31:0] WB_write_data;
-logic [31:0] load_data_final;
+
+
+
+
+
 
 //////////////////////////////////////////////////
 // Logic                                        //
@@ -135,8 +163,13 @@ assign im_addr = IF_PC;
 assign IF_instr = im_rdata;
 assign IF_pc4 = IF_PC + 32'd4;
 
-/** PC update logic (simplified for now, we'll improve it) */
-assign IF_PC_next = IF_pc4;
+pc_mux u_pc_mux(
+    .PCSel(ID_PCSel),
+    .pc4(IF_pc4),
+    .pc_imm(ID_pc_imm),
+    .ALU_Result(EX_alu_result),
+    .pc_next(IF_PC_next)
+);
 
 always_ff @(posedge clk or posedge rst) begin
     if (rst) begin
@@ -320,48 +353,90 @@ ALU u_alu(
     .rd(EX_alu_result)
 );
 
-pc_mux u_pc_mux(
-    .PCSel(PCSel),
-    .pc4(pc4),
-    .pc_imm(pc_imm),
-    .ALU_Result(alu_result),
-    .pc_next(PC_next)
+
+//----------------------//
+// EX/MEM Pipeline Reg  //
+//----------------------//
+EX_MEM_Reg u_EX_MEM_Reg(
+    .clk(clk),
+    .rst(rst),
+
+    .EX_pc4(EX_pc4),
+    .EX_alu_result(EX_alu_result),
+    .EX_rs2_data(EX_rs2_data),
+    .EX_rd(EX_rd),
+    .EX_funct3(EX_funct3),
+    .EX_MemWrite(EX_MemWrite),
+    .EX_MemRead(EX_MemRead),
+    .EX_RegWrite(EX_RegWrite),
+    .EX_ResultSrc(EX_ResultSrc),
+
+    .MEM_pc4(MEM_pc4),
+    .MEM_alu_result(MEM_alu_result),
+    .MEM_rs2_data(MEM_rs2_data),
+    .MEM_rd(MEM_rd),
+    .MEM_funct3(MEM_funct3),
+    .MEM_MemWrite(MEM_MemWrite),
+    .MEM_MemRead(MEM_MemRead),
+    .MEM_RegWrite(MEM_RegWrite),
+    .MEM_ResultSrc(MEM_ResultSrc)
 );
+
 
 //----------------------//
 // MEM Stage            //
 //----------------------//
 /** data memory */
-assign dm_addr = EX_alu_result;
+assign dm_addr = MEM_alu_result;
 
 store_data u_store_data(
-    .funct3(EX_funct3),
-    .MemWrite(EX_MemWrite),
-    .rs2_data(EX_rs2_data),
-    .alu_result(EX_alu_result),
+    .funct3(MEM_funct3),
+    .MemWrite(MEM_MemWrite),
+    .rs2_data(MEM_rs2_data),
+    .alu_result(MEM_alu_result),
     .dm_web(dm_web),
     .dm_wdata(dm_wdata)
 );
 
-//----------------------//
-// WB                   //
-//----------------------//
-assign WB_RegWrite = EX_RegWrite;
-assign WB_rd = EX_rd;
-
 load_data u_load_data(
     .dm_rdata(dm_rdata),
-    .funct3(EX_funct3),
-    .alu_result(EX_alu_result),
-    .load_data_final(load_data_final)
+    .funct3(MEM_funct3),
+    .alu_result(MEM_alu_result),
+    .load_data_final(MEM_load_data)
 );
 
+
+//----------------------//
+// MEM/WB Pipeline Reg  //
+//----------------------//
+MEM_WB_Reg u_MEM_WB_Reg(
+    .clk(clk),
+    .rst(rst),
+
+    .MEM_pc4(MEM_pc4),
+    .MEM_alu_result(MEM_alu_result),
+    .MEM_load_data(MEM_load_data),
+    .MEM_rd(MEM_rd),
+    .MEM_RegWrite(MEM_RegWrite),
+    .MEM_ResultSrc(MEM_ResultSrc),
+
+    .WB_pc4(WB_pc4),
+    .WB_alu_result(WB_alu_result),
+    .WB_load_data(WB_load_data),
+    .WB_rd(WB_rd),
+    .WB_RegWrite(WB_RegWrite),
+    .WB_ResultSrc(WB_ResultSrc)
+);
+
+//----------------------//
+// WB Stage             //
+//----------------------//
 // writeback mux 
 always_comb begin
-    case (EX_ResultSrc)
-        2'b00: WB_write_data = EX_alu_result;
-        2'b01: WB_write_data = load_data_final;
-        2'b10: WB_write_data = EX_pc4;
+    case (WB_ResultSrc)
+        2'b00: WB_write_data = WB_alu_result;
+        2'b01: WB_write_data = WB_load_data;
+        2'b10: WB_write_data = WB_pc4;
         default: WB_write_data = 32'b0;
     endcase
 end
