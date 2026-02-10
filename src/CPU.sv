@@ -111,6 +111,12 @@ logic [31:0] EX_alu_in1;
 logic [31:0] EX_alu_in2;
 logic [31:0] EX_alu_result;
 
+// Forwarding signals
+logic [1:0] ForwardA;
+logic [1:0] ForwardB;
+logic [31:0] EX_forward_rs1;
+logic [31:0] EX_forward_rs2;
+
 
 //----------------------//
 // EX/MEM Pipeline Reg  //
@@ -335,18 +341,55 @@ ID_EX_Reg u_ID_EX_Reg(
 );
 
 //----------------------//
+// Forwarding Unit      //
+//----------------------//
+Forwarding_Unit u_forwarding(
+    .EX_rs1(EX_rs1),
+    .EX_rs2(EX_rs2),
+
+    .MEM_rd(MEM_rd),
+    .MEM_RegWrite(MEM_RegWrite),
+
+    .WB_rd(WB_rd),
+    .WB_RegWrite(WB_RegWrite),
+
+    .ForwardA(ForwardA),
+    .ForwardB(ForwardB)
+);
+
+//----------------------//
 // EX Stage             //
 //----------------------//
+
+/** Apply Forwarding to rs1 and rs2 */
 always_comb begin
-    case (EX_ALUSrcA) 
-        2'b00: EX_alu_in1 = EX_rs1_data;
-        2'b01: EX_alu_in1 = EX_PC;
-        2'b10: EX_alu_in1 = 32'b0;
-        default: EX_alu_in1 = EX_rs1_data;
+    case (ForwardA)
+        2'b00: EX_forward_rs1 = EX_rs1_data;
+        2'b01: EX_forward_rs1 = MEM_alu_result;
+        2'b10: EX_forward_rs1 = WB_write_data;
+        default: EX_forward_rs1 = EX_rs1_data;
+    endcase
+end
+always_comb begin
+    case (ForwardB)
+        2'b00: EX_forward_rs2 = EX_rs2_data;
+        2'b01: EX_forward_rs2 = MEM_alu_result;
+        2'b10: EX_forward_rs2 = WB_write_data;
+        default: EX_forward_rs2 = EX_rs2_data;
     endcase
 end
 
-assign EX_alu_in2 = (EX_ALUSrcB) ? EX_imm : EX_rs2_data;
+
+always_comb begin
+    case (EX_ALUSrcA) 
+        2'b00: EX_alu_in1 = EX_forward_rs1;
+        2'b01: EX_alu_in1 = EX_PC;
+        2'b10: EX_alu_in1 = 32'b0;
+        default: EX_alu_in1 = EX_forward_rs1;
+    endcase
+end
+
+assign EX_alu_in2 = (EX_ALUSrcB) ? EX_imm : EX_forward_rs2;
 
 ALU u_alu(
     .rs1(EX_alu_in1),
@@ -366,7 +409,7 @@ EX_MEM_Reg u_EX_MEM_Reg(
 
     .EX_pc4(EX_pc4),
     .EX_alu_result(EX_alu_result),
-    .EX_rs2_data(EX_rs2_data),
+    .EX_rs2_data(EX_forward_rs2),
     .EX_rd(EX_rd),
     .EX_funct3(EX_funct3),
     .EX_MemWrite(EX_MemWrite),
