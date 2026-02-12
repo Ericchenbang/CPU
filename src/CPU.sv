@@ -77,6 +77,12 @@ logic ID_ltu;
 logic ID_take_branch;
 logic [1:0] ID_PCSel;
 
+/** ID stage forwarding (for branch comparator) */
+logic [1:0] ID_ForwardA;
+logic [1:0] ID_ForwardB;
+logic [31:0] ID_forward_rs1;
+logic [31:0] ID_forward_rs2;
+logic ID_Branch_Stall;
 
 //----------------------//
 // ID/EX Pipeline Reg   //
@@ -186,11 +192,30 @@ end
 
 
 //----------------------//
+// Hazard Detection     //
+//----------------------//
+Hazard_Detection_Unit u_hazard_detection(
+    .ID_rs1(ID_rs1),
+    .ID_rs2(ID_rs2),
+    .EX_rd(EX_rd),
+    .EX_MemRead(EX_MemRead),
+
+    .ID_Branch(ID_Branch),
+    .ID_take_branch(ID_take_branch),
+    .ID_Jal(ID_Jal),
+    .ID_Jalr(ID_Jalr),
+
+    .ID_Branch_Stall(ID_Branch_Stall),
+
+    .Stall(IF_ID_stall),
+    .IF_ID_flush(IF_ID_flush),
+    .ID_EX_flush(ID_EX_flush)
+);
+
+
+//----------------------//
 // IF/ID Pipeline Reg   //
 //----------------------//
-// For now, set stall and flush to 0
-assign IF_ID_stall = 1'b0;
-assign IF_ID_flush = 1'b0;
 
 IF_ID_Reg u_IF_ID_Reg(
     .clk(clk),
@@ -237,6 +262,49 @@ imm_gen u_imm(
 
 assign ID_pc_imm = ID_PC + ID_imm;
 
+/** ID Forwarding Unit */
+ID_Forwarding_Unit u_id_forwarding(
+    .ID_rs1(ID_rs1),
+    .ID_rs2(ID_rs2),
+
+    .ID_Branch(ID_Branch),
+    .ID_Jalr(ID_Jalr),
+
+    .EX_rd(EX_rd),
+    .EX_RegWrite(EX_RegWrite),
+
+    .MEM_rd(MEM_rd),
+    .MEM_RegWrite(MEM_RegWrite),
+    .MEM_MemRead(MEM_MemRead),
+
+    .WB_rd(WB_rd),
+    .WB_RegWrite(WB_RegWrite),
+
+    .ID_ForwardA(ID_ForwardA),
+    .ID_ForwardB(ID_ForwardB),
+    .ID_Branch_Stall(ID_Branch_Stall)
+);
+
+/** ID stage forwarding muxes */
+always_comb begin
+    case (ID_ForwardA)
+        2'b00: ID_forward_rs1 = ID_rs1_data;
+        2'b01: ID_forward_rs1 = MEM_alu_result;
+        2'b10: ID_forward_rs1 = WB_write_data;
+        default: ID_forward_rs1 = ID_rs1_data;
+    endcase
+end
+
+always_comb begin
+    case (ID_ForwardB)
+        2'b00: ID_forward_rs2 = ID_rs2_data;
+        2'b01: ID_forward_rs2 = MEM_alu_result;
+        2'b10: ID_forward_rs2 = WB_write_data;
+        default: ID_forward_rs2 = ID_rs2_data;
+    endcase
+end
+
+
 Control_Unit u_ctrl(
     .opcode(ID_opcode),
 
@@ -262,8 +330,8 @@ ALU_Control_Unit u_aluctrl(
 );
 
 comparator u_com(
-    .rs1(ID_rs1_data),
-    .rs2(ID_rs2_data),
+    .rs1(ID_forward_rs1),
+    .rs2(ID_forward_rs2),
 
     .eq(ID_eq),
     .lt(ID_lt),
@@ -293,8 +361,6 @@ pc_select u_pc_sel(
 //----------------------//
 // ID/EX Pipeline Reg   //
 //----------------------//
-// For now, no flush (we'all add branch logic later)
-assign ID_EX_flush = 1'b0;
 
 ID_EX_Reg u_ID_EX_Reg(
     .clk(clk),
