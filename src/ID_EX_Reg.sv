@@ -25,6 +25,11 @@ module ID_EX_Reg(
     input       ID_RegWrite,
     input [1:0] ID_ResultSrc,
 
+    input logic ID_Branch,
+    input logic ID_Jal,
+    input logic ID_Jalr,
+    input logic [31:0] ID_pc_imm,
+
     // Data outputs to EX stage
     output logic [31:0] EX_PC,
     output logic [31:0] EX_pc4,
@@ -45,7 +50,12 @@ module ID_EX_Reg(
     output logic       EX_MemWrite,
     output logic       EX_MemRead,
     output logic       EX_RegWrite,
-    output logic [1:0] EX_ResultSrc
+    output logic [1:0] EX_ResultSrc,
+
+    output logic EX_Branch,
+    output logic EX_Jal,
+    output logic EX_Jalr,
+    output logic [31:0] EX_pc_imm,
 );
 
 
@@ -70,6 +80,11 @@ always_ff @(posedge clk or posedge rst) begin
         EX_MemRead  <= 1'b0;
         EX_RegWrite <= 1'b0;
         EX_ResultSrc <= 2'b0;
+
+        EX_Branch   <= 1'b0;
+        EX_Jal      <= 1'b0;
+        EX_Jalr     <= 1'b0;
+        EX_pc_imm   <= 32'b0;
     end
     else if (flush) begin
         EX_PC       <= 32'b0;
@@ -91,6 +106,11 @@ always_ff @(posedge clk or posedge rst) begin
         EX_MemRead  <= 1'b0;
         EX_RegWrite <= 1'b0;
         EX_ResultSrc <= 2'b0;
+
+        EX_Branch   <= 1'b0;
+        EX_Jal      <= 1'b0;
+        EX_Jalr     <= 1'b0;
+        EX_pc_imm   <= 32'b0;
     end
     else begin
         EX_PC       <= ID_PC;
@@ -112,6 +132,11 @@ always_ff @(posedge clk or posedge rst) begin
         EX_MemRead  <= ID_MemRead;
         EX_RegWrite <= ID_RegWrite;
         EX_ResultSrc <= ID_ResultSrc;
+
+        EX_Branch   <= ID_Branch;
+        EX_Jal      <= ID_Jal;
+        EX_Jalr     <= ID_Jalr;
+        EX_pc_imm   <= ID_pc_imm;
     end
 end
 

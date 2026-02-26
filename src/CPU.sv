@@ -71,18 +71,7 @@ logic [3:0] ID_ALUControl;
 
 /** Branch decision signals */
 logic [31:0] ID_pc_imm;
-logic ID_eq;
-logic ID_lt;
-logic ID_ltu;
-logic ID_take_branch;
-logic [1:0] ID_PCSel;
 
-/** ID stage forwarding (for branch comparator) */
-logic [1:0] ID_ForwardA;
-logic [1:0] ID_ForwardB;
-logic [31:0] ID_forward_rs1;
-logic [31:0] ID_forward_rs2;
-logic ID_Branch_Stall;
 
 //----------------------//
 // ID/EX Pipeline Reg   //
@@ -91,6 +80,12 @@ logic ID_EX_flush;
 
 logic [31:0] EX_PC;
 logic [31:0] EX_pc4;
+
+logic EX_Branch;
+logic EX_Jal;
+logic EX_Jalr;
+logic [31:0] EX_pc_imm;
+
 logic [31:0] EX_rs1_data;
 logic [31:0] EX_rs2_data;
 logic [31:0] EX_imm;
@@ -116,6 +111,12 @@ logic [1:0] EX_ResultSrc;
 logic [31:0] EX_alu_in1;
 logic [31:0] EX_alu_in2;
 logic [31:0] EX_alu_result;
+
+logic EX_eq;
+logic EX_lt;
+logic EX_ltu;
+logic EX_take_branch;
+logic [1:0] EX_PCSel;
 
 // Forwarding signals
 logic [1:0] ForwardA;
@@ -174,9 +175,9 @@ assign IF_instr = im_rdata;
 assign IF_pc4 = IF_PC + 32'd4;
 
 pc_mux u_pc_mux(
-    .PCSel(ID_PCSel),
+    .PCSel(EX_PCSel),
     .pc4(IF_pc4),
-    .pc_imm(ID_pc_imm),
+    .pc_imm(EX_pc_imm),
     .ALU_Result(EX_alu_result),
     .pc_next(IF_PC_next)
 );
@@ -200,12 +201,10 @@ Hazard_Detection_Unit u_hazard_detection(
     .EX_rd(EX_rd),
     .EX_MemRead(EX_MemRead),
 
-    .ID_Branch(ID_Branch),
-    .ID_take_branch(ID_take_branch),
-    .ID_Jal(ID_Jal),
-    .ID_Jalr(ID_Jalr),
-
-    .ID_Branch_Stall(ID_Branch_Stall),
+    .EX_Branch(EX_Branch),
+    .EX_take_branch(EX_take_branch),
+    .EX_Jal(EX_Jal),
+    .EX_Jalr(EX_Jalr),
 
     .Stall(IF_ID_stall),
     .IF_ID_flush(IF_ID_flush),
@@ -262,48 +261,6 @@ imm_gen u_imm(
 
 assign ID_pc_imm = ID_PC + ID_imm;
 
-/** ID Forwarding Unit */
-ID_Forwarding_Unit u_id_forwarding(
-    .ID_rs1(ID_rs1),
-    .ID_rs2(ID_rs2),
-
-    .ID_Branch(ID_Branch),
-    .ID_Jalr(ID_Jalr),
-
-    .EX_rd(EX_rd),
-    .EX_RegWrite(EX_RegWrite),
-
-    .MEM_rd(MEM_rd),
-    .MEM_RegWrite(MEM_RegWrite),
-    .MEM_MemRead(MEM_MemRead),
-
-    .WB_rd(WB_rd),
-    .WB_RegWrite(WB_RegWrite),
-
-    .ID_ForwardA(ID_ForwardA),
-    .ID_ForwardB(ID_ForwardB),
-    .ID_Branch_Stall(ID_Branch_Stall)
-);
-
-/** ID stage forwarding muxes */
-always_comb begin
-    case (ID_ForwardA)
-        2'b00: ID_forward_rs1 = ID_rs1_data;
-        2'b01: ID_forward_rs1 = MEM_alu_result;
-        2'b10: ID_forward_rs1 = WB_write_data;
-        default: ID_forward_rs1 = ID_rs1_data;
-    endcase
-end
-
-always_comb begin
-    case (ID_ForwardB)
-        2'b00: ID_forward_rs2 = ID_rs2_data;
-        2'b01: ID_forward_rs2 = MEM_alu_result;
-        2'b10: ID_forward_rs2 = WB_write_data;
-        default: ID_forward_rs2 = ID_rs2_data;
-    endcase
-end
-
 
 Control_Unit u_ctrl(
     .opcode(ID_opcode),
@@ -328,35 +285,6 @@ ALU_Control_Unit u_aluctrl(
 
     .ALUControl(ID_ALUControl)
 );
-
-comparator u_com(
-    .rs1(ID_forward_rs1),
-    .rs2(ID_forward_rs2),
-
-    .eq(ID_eq),
-    .lt(ID_lt),
-    .ltu(ID_ltu)
-);
-
-branch_decision u_br_dec(
-    .Branch(ID_Branch),
-    .funct3(ID_funct3),
-    .eq(ID_eq),
-    .lt(ID_lt),
-    .ltu(ID_ltu),
-
-    .take_branch(ID_take_branch)
-);
-
-pc_select u_pc_sel(
-    .Branch(ID_Branch),
-    .take_branch(ID_take_branch),
-    .Jal(ID_Jal),
-    .Jalr(ID_Jalr),
-
-    .PCSel(ID_PCSel)
-);
-
 
 //----------------------//
 // ID/EX Pipeline Reg   //
@@ -386,6 +314,11 @@ ID_EX_Reg u_ID_EX_Reg(
     .ID_RegWrite(ID_RegWrite),
     .ID_ResultSrc(ID_ResultSrc),
 
+    .ID_Branch(ID_Branch),
+    .ID_Jal(ID_Jal),
+    .ID_Jalr(ID_Jalr),
+    .ID_pc_imm(ID_pc_imm),
+
     .EX_PC(EX_PC),
     .EX_pc4(EX_pc4),
     .EX_rs1_data(EX_rs1_data),
@@ -403,7 +336,12 @@ ID_EX_Reg u_ID_EX_Reg(
     .EX_MemWrite(EX_MemWrite),
     .EX_MemRead(EX_MemRead),
     .EX_RegWrite(EX_RegWrite),
-    .EX_ResultSrc(EX_ResultSrc)
+    .EX_ResultSrc(EX_ResultSrc),
+
+    .EX_Branch(EX_Branch),
+    .EX_Jal(EX_Jal),
+    .EX_Jalr(EX_Jalr),
+    .EX_pc_imm(EX_pc_imm)
 );
 
 //----------------------//
@@ -445,6 +383,33 @@ always_comb begin
     endcase
 end
 
+comparator u_com(
+    .rs1(EX_forward_rs1),
+    .rs2(EX_forward_rs2),
+
+    .eq(EX_eq),
+    .lt(EX_lt),
+    .ltu(EX_ltu)
+);
+
+branch_decision u_br_dec(
+    .Branch(EX_Branch),
+    .funct3(EX_funct3),
+    .eq(EX_eq),
+    .lt(EX_lt),
+    .ltu(EX_ltu),
+
+    .take_branch(EX_take_branch)
+);
+
+pc_select u_pc_sel(
+    .Branch(EX_Branch),
+    .take_branch(EX_take_branch),
+    .Jal(EX_Jal),
+    .Jalr(EX_Jalr),
+
+    .PCSel(EX_PCSel)
+);
 
 always_comb begin
     case (EX_ALUSrcA) 

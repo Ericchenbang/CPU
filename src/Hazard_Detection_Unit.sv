@@ -13,13 +13,11 @@ module Hazard_Detection_Unit(
     input [4:0] EX_rd,
     input       EX_MemRead,
 
-    // Control Hazard Detection
-    input ID_Branch,
-    input ID_take_branch,
-    input ID_Jal,
-    input ID_Jalr,
-
-    input ID_Branch_Stall,
+    // Control Hazard Detection - Now from EX stage
+    input EX_Branch,
+    input EX_take_branch,
+    input EX_Jal,
+    input EX_Jalr,
 
     // Hazard control signals
     output logic Stall,
@@ -48,9 +46,9 @@ end
 // Control Hazard       //
 //----------------------//
 // A control hazard occurs when 
-// 1. Branch is taken (ID_Branch && ID_take_branch)
-// 2. JAL instruction (ID_Jal)
-// 3. JALR instruction (ID_Jalr)
+// 1. Branch is taken (EX_Branch && EX_take_branch)
+// 2. JAL instruction (EX_Jal)
+// 3. JALR instruction (EX_Jalr)
 
 logic control_hazard;
 logic branch_hazard;    // Seperate signal for branches
@@ -60,11 +58,11 @@ always_comb begin
     branch_hazard = 1'b0;
     jump_hazard = 1'b0;
 
-    if (ID_Branch && ID_take_branch) begin
+    if (EX_Branch && EX_take_branch) begin
         branch_hazard = 1'b1;
     end
 
-    if (ID_Jal || ID_Jalr) begin
+    if (EX_Jal || EX_Jalr) begin
         jump_hazard = 1'b1;
     end
 
@@ -76,8 +74,10 @@ end
 // Output Logic         //
 //----------------------//
 
-// Stall: Freeze IF and ID stages when load-use hazard detected
-assign Stall = ID_Branch_Stall || load_use_hazard;
+// Stall: Only for load-use hazards
+assign Stall = load_use_hazard;
+
+
 // IF/ID Flush: Clear the instruction in IF/ID register
 // Used for all control hazards (branch, JAL, JALR)
 // This flushes the incorrectly fetched instruction
