@@ -24,12 +24,23 @@ logic [31:0] IF_pc4;
 logic [31:0] IF_PC_next;
 logic [31:0] IF_instr;
 
+logic IF_predicted_taken;
+
+// Branch prediction signals
+logic predict_taken;
+logic [31:0] predicted_target;
+logic btb_hit;
+
 //----------------------//
 // IF/ID Pipeline Reg   //
 //----------------------//
 logic [31:0] ID_PC;
 logic [31:0] ID_pc4;
 logic [31:0] ID_instr;
+
+// For prediction recovery
+logic ID_predicted_taken;
+logic [31:0] ID_predicted_target;
 
 // Hazard control signals (add logic later)
 logic IF_ID_stall;
@@ -103,6 +114,10 @@ logic EX_MemRead;
 logic EX_RegWrite;
 logic [1:0] EX_ResultSrc;
 
+// For prediction recovery
+logic EX_predicted_taken;
+logic [31:0] EX_predicted_target;
+
 
 //----------------------//
 // EX State Signals     //
@@ -167,6 +182,51 @@ logic [31:0] WB_write_data;
 //////////////////////////////////////////////////
 // Logic                                        //
 //////////////////////////////////////////////////
+
+//----------------------//
+// Branch Predictor     //
+//----------------------//
+Branch_Predictor_Bimodal #(
+    .INDEX_BITS(8)
+) u_branch_predictor (
+    .clk(clk),
+    .rst(rst),
+
+    .IF_PC(IF_PC),
+    .predict_taken(predict_taken),
+
+    .update_enable(EX_Branch || EX_Jal || EX_Jalr),
+    .update_PC(EX_PC),
+    .actual_taken(EX_take_branch || EX_Jal || EX_Jalr)
+);
+
+// Calculate actual branch target for BTB update
+logic [31:0] actual_branch_target;
+always_comb begin
+    case (EX_PCSel)
+        2'b00: actual_branch_target = EX_pc4;
+        2'b01: actual_branch_target = EX_pc_imm;
+        2'b10: actual_branch_target = {EX_alu_result[31:1], 1'b0};
+        default: actual_branch_target = EX_pc4;
+    endcase 
+end
+
+Branch_Target_Buffer #(
+    .INDEX_BITS(8)
+) u_btb (
+    .clk(clk),
+    .rst(rst),
+
+    .IF_PC(IF_PC),
+    .predicted_target(predicted_target),
+    .hit(btb_hit),
+
+    .update_enable((EX_Branch && EX_take_branch) || EX_Jal || EX_Jalr),
+    .update_PC(EX_PC),
+    .actual_target(actual_branch_target)
+);
+
+
 //----------------------//
 // IF State Logic       //
 //----------------------//
@@ -174,13 +234,43 @@ assign im_addr = IF_PC;
 assign IF_instr = im_rdata;
 assign IF_pc4 = IF_PC + 32'd4;
 
+assign IF_predicted_taken = predict_taken && btb_hit;
+
+//----------------------//
+// PC Selection Logic   //
+//----------------------//
+// Step1: Default next PC with branch prediction
+logic [31:0] IF_PC_predicted;
+
+always_comb begin
+    IF_PC_predicted = IF_pc4;
+
+    if (predicted_taken && btb_hit) begin
+        IF_PC_predicted = predicted_target;
+    end
+end
+
+// Step2: pc_mux handles actual control flow (overrides prediction if wrong)
+logic [31:0] IF_PC_corrected;
+
 pc_mux u_pc_mux(
     .PCSel(EX_PCSel),
-    .pc4(IF_pc4),
+    .pc4(IF_PC_predicted),
     .pc_imm(EX_pc_imm),
     .ALU_Result(EX_alu_result),
-    .pc_next(IF_PC_next)
+    .pc_next(IF_PC_corrected)
 );
+
+// Step3: Final PC selection (corrected PC overrides prediction)
+always_comb begin
+    if (EX_PCSel != 2'b00) begin
+        // Control hazard - use corrected PC
+        IF_PC_next = IF_PC_corrected;
+    end
+    else begin
+        IF_PC_next = IF_PC_predicted;
+    end
+end
 
 always_ff @(posedge clk or posedge rst) begin
     if (rst) begin
@@ -206,6 +296,9 @@ Hazard_Detection_Unit u_hazard_detection(
     .EX_Jal(EX_Jal),
     .EX_Jalr(EX_Jalr),
 
+    .EX_predicted_taken(EX_predicted_taken),
+    .EX_PCSel(EX_PCSel),
+
     .Stall(IF_ID_stall),
     .IF_ID_flush(IF_ID_flush),
     .ID_EX_flush(ID_EX_flush)
@@ -224,9 +317,11 @@ IF_ID_Reg u_IF_ID_Reg(
     .IF_PC(IF_PC),
     .IF_pc4(IF_pc4),
     .IF_instr(IF_instr),
+    .IF_predicted_taken(IF_predicted_taken),
     .ID_PC(ID_PC),
     .ID_pc4(ID_pc4),
-    .ID_instr(ID_instr)
+    .ID_instr(ID_instr),
+    .ID_predicted_taken(ID_predicted_taken)
 );
 
 
@@ -319,6 +414,8 @@ ID_EX_Reg u_ID_EX_Reg(
     .ID_Jalr(ID_Jalr),
     .ID_pc_imm(ID_pc_imm),
 
+    .ID_predicted_taken(ID_predicted_taken),
+
     .EX_PC(EX_PC),
     .EX_pc4(EX_pc4),
     .EX_rs1_data(EX_rs1_data),
@@ -341,7 +438,9 @@ ID_EX_Reg u_ID_EX_Reg(
     .EX_Branch(EX_Branch),
     .EX_Jal(EX_Jal),
     .EX_Jalr(EX_Jalr),
-    .EX_pc_imm(EX_pc_imm)
+    .EX_pc_imm(EX_pc_imm),
+
+    .EX_predicted_taken(EX_predicted_taken)
 );
 
 //----------------------//

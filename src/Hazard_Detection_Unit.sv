@@ -19,6 +19,10 @@ module Hazard_Detection_Unit(
     input EX_Jal,
     input EX_Jalr,
 
+    // Misprediction detection
+    input EX_predicted_taken,
+    input [1:0] EX_PCSel,
+
     // Hazard control signals
     output logic Stall,
     output logic IF_ID_flush,
@@ -69,6 +73,35 @@ always_comb begin
     control_hazard = branch_hazard || jump_hazard;
 end
 
+//-------------------------//
+// Misprediction Detection //
+//-------------------------//
+logic misprediction;
+
+always_comb begin
+    misprediction = 1'b0;
+
+    // Case 1: Predicted taken, but branch not taken
+    if (EX_predicted_taken && EX_Branch && !EX_take_branch) begin
+        misprediction = 1'b1;
+    end
+
+    // Case 2: Predicted not taken, but branch taken
+    if (!EX_predicted_taken && EX_Branch && EX_take_branch) begin
+        misprediction = 1'b1;
+    end
+
+    // Case 3: Didn't predict jump, but JAL/JALR occurred
+    if (!EX_predicted_taken && (EX_Jal || EX_Jalr)) begin
+        misprediction = 1'b1;
+    end
+
+    // Case 4: Predicted jump, but no jump
+    if (EX_predicted_taken && !EX_Branch && !EX_Jal && !EX_Jalr && (EX_PCSel != 2'b00)) begin
+        misprediction = 1'b1;
+    end
+end
+
 
 //----------------------//
 // Output Logic         //
@@ -84,7 +117,7 @@ assign Stall = load_use_hazard;
 always_comb begin
     IF_ID_flush = 1'b0;
 
-    if (control_hazard) begin
+    if (control_hazard || misprediction) begin
         IF_ID_flush = 1'b1;
     end
 end
@@ -101,6 +134,10 @@ always_comb begin
 
     // only branch, not JAL/JALR
     if (branch_hazard) begin
+        ID_EX_flush = 1'b1;
+    end
+
+    if (misprediction) begin
         ID_EX_flush = 1'b1;
     end
 end
