@@ -24,12 +24,12 @@ logic [31:0] IF_pc4;
 logic [31:0] IF_PC_next;
 logic [31:0] IF_instr;
 
-logic IF_predicted_taken;
+logic        IF_predicted_taken;
 
 // Branch prediction signals
-logic predict_taken;
+logic        predict_taken;
 logic [31:0] predicted_target;
-logic btb_hit;
+logic        btb_hit;
 
 //----------------------//
 // IF/ID Pipeline Reg   //
@@ -43,8 +43,8 @@ logic ID_predicted_taken;
 logic [31:0] ID_predicted_target;
 
 // Hazard control signals (add logic later)
-logic IF_ID_stall;
-logic IF_ID_flush;
+logic        IF_ID_stall;
+logic        IF_ID_flush;
 
 
 //----------------------//
@@ -84,6 +84,8 @@ logic [3:0] ID_ALUControl;
 logic [31:0] ID_pc_imm;
 
 
+logic ID_is_m_extension;
+
 //----------------------//
 // ID/EX Pipeline Reg   //
 //----------------------//
@@ -92,32 +94,35 @@ logic ID_EX_flush;
 logic [31:0] EX_PC;
 logic [31:0] EX_pc4;
 
-logic EX_Branch;
-logic EX_Jal;
-logic EX_Jalr;
+logic        EX_Branch;
+logic        EX_Jal;
+logic        EX_Jalr;
 logic [31:0] EX_pc_imm;
 
 logic [31:0] EX_rs1_data;
 logic [31:0] EX_rs2_data;
 logic [31:0] EX_imm;
 
-logic [4:0] EX_rs1;
-logic [4:0] EX_rs2;
-logic [4:0] EX_rd;
-logic [2:0] EX_funct3;
+logic [4:0]  EX_rs1;
+logic [4:0]  EX_rs2;
+logic [4:0]  EX_rd;
+logic [2:0]  EX_funct3;
 
-logic [3:0] EX_ALUControl;
-logic [1:0] EX_ALUSrcA;
-logic EX_ALUSrcB;
-logic EX_MemWrite;
-logic EX_MemRead;
-logic EX_RegWrite;
-logic [1:0] EX_ResultSrc;
+logic [3:0]  EX_ALUControl;
+logic [1:0]  EX_ALUSrcA;
+logic        EX_ALUSrcB;
+logic        EX_MemWrite;
+logic        EX_MemRead;
+logic        EX_RegWrite;
+logic [1:0]  EX_ResultSrc;
 
 // For prediction recovery
-logic EX_predicted_taken;
+logic        EX_predicted_taken;
 logic [31:0] EX_predicted_target;
 
+// For multiply/divide operation
+logic [6:0]  EX_funct7;
+logic        EX_is_m_extension;
 
 //----------------------//
 // EX State Signals     //
@@ -127,18 +132,22 @@ logic [31:0] EX_alu_in1;
 logic [31:0] EX_alu_in2;
 logic [31:0] EX_alu_result;
 
-logic EX_eq;
-logic EX_lt;
-logic EX_ltu;
-logic EX_take_branch;
-logic [1:0] EX_PCSel;
+logic [31;0] EX_mul_result;
+logic [31:0] EX_div_result;
+
+logic        EX_eq;
+logic        EX_lt;
+logic        EX_ltu;
+logic        EX_take_branch;
+logic [1:0]  EX_PCSel;
 
 // Forwarding signals
-logic [1:0] ForwardA;
-logic [1:0] ForwardB;
+logic [1:0]  ForwardA;
+logic [1:0]  ForwardB;
 logic [31:0] EX_forward_rs1;
 logic [31:0] EX_forward_rs2;
 
+logic [31:0] EX_result;
 
 //----------------------//
 // EX/MEM Pipeline Reg  //
@@ -146,12 +155,12 @@ logic [31:0] EX_forward_rs2;
 logic [31:0] MEM_pc4;
 logic [31:0] MEM_alu_result;
 logic [31:0] MEM_rs2_data;
-logic [4:0] MEM_rd;
-logic [2:0] MEM_funct3;
-logic MEM_MemWrite;
-logic MEM_MemRead;
-logic MEM_RegWrite;
-logic [1:0] MEM_ResultSrc;
+logic [4:0]  MEM_rd;
+logic [2:0]  MEM_funct3;
+logic        MEM_MemWrite;
+logic        MEM_MemRead;
+logic        MEM_RegWrite;
+logic [1:0]  MEM_ResultSrc;
 
 //----------------------//
 // MEM Stage Signals    //
@@ -165,9 +174,9 @@ logic [31:0] MEM_load_data;
 logic [31:0] WB_pc4;
 logic [31:0] WB_alu_result;
 logic [31:0] WB_load_data;
-logic [4:0] WB_rd;
-logic WB_RegWrite;
-logic [1:0] WB_ResultSrc;
+logic [4:0]  WB_rd;
+logic        WB_RegWrite;
+logic [1:0]  WB_ResultSrc;
 
 //----------------------//
 // WB                   //
@@ -378,7 +387,8 @@ ALU_Control_Unit u_aluctrl(
     .funct7(ID_funct7),
     .funct3(ID_funct3),
 
-    .ALUControl(ID_ALUControl)
+    .ALUControl(ID_ALUControl),
+    .is_m_extension(ID_is_m_extension)
 );
 
 //----------------------//
@@ -529,6 +539,27 @@ ALU u_alu(
     .rd(EX_alu_result)
 );
 
+Multiplier u_multiplier(
+    .rs1(EX_forward_rs1),
+    .rs2(EX_forward_rs2),
+    .funct3(EX_funct3),
+    .result(EX_mul_result)
+);
+
+always_comb begin
+    if (EX_is_m_extension) begin
+        if (EX_ALUControl == 4'b1001) begin
+            EX_result = EX_mul_result;
+        end
+        else begin
+            EX_result = EX_div_result;
+        end
+    end
+    else begin
+        EX_result = EX_alu_result;
+    end
+end
+
 
 //----------------------//
 // EX/MEM Pipeline Reg  //
@@ -538,7 +569,7 @@ EX_MEM_Reg u_EX_MEM_Reg(
     .rst(rst),
 
     .EX_pc4(EX_pc4),
-    .EX_alu_result(EX_alu_result),
+    .EX_alu_result(EX_result),
     .EX_rs2_data(EX_forward_rs2),
     .EX_rd(EX_rd),
     .EX_funct3(EX_funct3),

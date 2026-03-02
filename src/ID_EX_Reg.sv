@@ -32,6 +32,9 @@ module ID_EX_Reg(
 
     input logic ID_predicted_taken,
 
+    input logic [6:0] ID_funct7,
+    input logic ID_is_m_extension,
+
     // Data outputs to EX stage
     output logic [31:0] EX_PC,
     output logic [31:0] EX_pc4,
@@ -59,7 +62,10 @@ module ID_EX_Reg(
     output logic EX_Jalr,
     output logic [31:0] EX_pc_imm,
 
-    output logic EX_predicted_taken
+    output logic EX_predicted_taken,
+
+    output logic [6:0] EX_funct7,
+    output logic EX_is_m_extension
 );
 
 
@@ -91,6 +97,9 @@ always_ff @(posedge clk or posedge rst) begin
         EX_pc_imm   <= 32'b0;
 
         EX_predicted_taken <= 1'b0;
+
+        EX_funct7 <= 7'b0;
+        EX_is_m_extension <= 1'b0;
     end
     else if (flush) begin
         EX_PC       <= 32'b0;
@@ -119,6 +128,9 @@ always_ff @(posedge clk or posedge rst) begin
         EX_pc_imm   <= 32'b0;
 
         EX_predicted_taken <= 1'b0;
+
+        EX_funct7 <= 7'b0;
+        EX_is_m_extension <= 1'b0;
     end
     else begin
         EX_PC       <= ID_PC;
@@ -147,6 +159,9 @@ always_ff @(posedge clk or posedge rst) begin
         EX_pc_imm   <= ID_pc_imm;
 
         EX_predicted_taken <= ID_predicted_taken;
+
+        EX_funct7 <= ID_funct7;
+        EX_is_m_extension <= ID_is_m_extension;
     end
 end
 

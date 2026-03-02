@@ -3,7 +3,8 @@ module ALU_Control_Unit(
     input [6:0] funct7,
     input [2:0] funct3,
 
-    output logic [3:0] ALUControl
+    output logic [3:0] ALUControl,
+    output logic is_m_extension
 );
 
 localparam ADD  = 4'b0000;
@@ -16,8 +17,12 @@ localparam SRL  = 4'b0101;
 localparam SRA  = 4'b1101;
 localparam OR   = 4'b0110;
 localparam AND  = 4'b0111;
+localparam MUL_OP = 4'b1001;
+localparam DIV_OP = 4'b1010;
 
 always_comb begin
+    is_m_extension = 1'b0;
+
     unique case (ALUOp) 
         2'b00: begin
             ALUControl = ADD;
@@ -26,7 +31,20 @@ always_comb begin
             ALUControl = SUB;
         end
         2'b10: begin
-            ALUControl = {funct7[5], funct3};
+            if (funct7 == 7'b000_0001) begin
+                is_m_extension = 1'b1;
+
+                // distinguish multiply, divide
+                if (funct3[2] == 1'b0) begin
+                    ALUControl = MUL_OP;
+                end
+                else begin
+                    ALUControl = DIV_OP;
+                end
+            end
+            else begin
+                ALUControl = {funct7[5], funct3};
+            end
         end
         2'b11: begin
             // distinguish SRLI, SRAI
