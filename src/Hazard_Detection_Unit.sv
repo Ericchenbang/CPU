@@ -14,13 +14,13 @@ module Hazard_Detection_Unit(
     input       EX_MemRead,
 
     // Control Hazard Detection - Now from EX stage
-    input EX_Branch,
-    input EX_take_branch,
-    input EX_Jal,
-    input EX_Jalr,
+    input       EX_Branch,
+    input       EX_take_branch,
+    input       EX_Jal,
+    input       EX_Jalr,
 
     // Misprediction detection
-    input EX_predicted_taken,
+    input       EX_predicted_taken,
     input [1:0] EX_PCSel,
 
     // Hazard control signals

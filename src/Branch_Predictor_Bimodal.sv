@@ -5,13 +5,13 @@ module Branch_Predictor_Bimodal #(
     input logic rst,
 
     // Prediction interface (in IF stage)
-    input logic [31:0] IF_PC,
-    output logic predict_taken,
+    input  logic [31:0] IF_PC,
+    output logic        predict_taken,
 
     // Updata interface (in EX stage, after solution)
-    input logic update_enable,      // EX_Branch || EX_Jal || EX_Jalr
-    input logic [31:0] update_PC,   // EX_PC
-    input logic actual_taken        // EX_take_branch || EX_Jal || EX_Jalr
+    input  logic        update_enable,      // EX_Branch || EX_Jal || EX_Jalr
+    input  logic [31:0] update_PC,          // EX_PC
+    input  logic        actual_taken        // EX_take_branch || EX_Jal || EX_Jalr
 );
 
 // Pattern History Table - 2 bit saturating counters
@@ -23,7 +23,7 @@ logic [INDEX_BITS - 1 : 0] update_index;
 
 // PC[1:0] is always 0 (aligned), so use PC[INDEX_BITS+1 : 2]
 assign predict_index = IF_PC[INDEX_BITS + 1 : 2];
-assign update_index = update_PC[INDEX_BITS + 1 : 2];
+assign update_index  = update_PC[INDEX_BITS + 1 : 2];
 
 // Prediction: Taken if counter >= 2 (10 or 11)
 assign predict_taken = PHT[predict_index][1];

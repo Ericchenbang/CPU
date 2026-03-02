@@ -1,8 +1,8 @@
 module store_data(
-    input [2:0]  funct3,
-    input        MemWrite,
-    input [31:0] rs2_data,
-    input [31:0] alu_result,
+    input        [2:0]  funct3,
+    input               MemWrite,
+    input        [31:0] rs2_data,
+    input        [31:0] alu_result,
 
     output logic [3:0]  dm_web,
     output logic [31:0] dm_wdata

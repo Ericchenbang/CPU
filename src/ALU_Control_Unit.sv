@@ -1,22 +1,22 @@
 module ALU_Control_Unit(
-    input [1:0] ALUOp,
-    input [6:0] funct7,
-    input [2:0] funct3,
+    input        [1:0] ALUOp,
+    input        [6:0] funct7,
+    input        [2:0] funct3,
 
     output logic [3:0] ALUControl,
-    output logic is_m_extension
+    output logic       is_m_extension
 );
 
-localparam ADD  = 4'b0000;
-localparam SUB  = 4'b1000;
-localparam SLL  = 4'b0001;
-localparam SLT  = 4'b0010;
-localparam SLTU = 4'b0011;
-localparam XOR  = 4'b0100;
-localparam SRL  = 4'b0101;
-localparam SRA  = 4'b1101;
-localparam OR   = 4'b0110;
-localparam AND  = 4'b0111;
+localparam ADD    = 4'b0000;
+localparam SUB    = 4'b1000;
+localparam SLL    = 4'b0001;
+localparam SLT    = 4'b0010;
+localparam SLTU   = 4'b0011;
+localparam XOR    = 4'b0100;
+localparam SRL    = 4'b0101;
+localparam SRA    = 4'b1101;
+localparam OR     = 4'b0110;
+localparam AND    = 4'b0111;
 localparam MUL_OP = 4'b1001;
 localparam DIV_OP = 4'b1010;
 

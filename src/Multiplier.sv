@@ -1,7 +1,7 @@
 module Multiplier(
-    input logic [31:0] rs1,
-    input logic [31:0] rs2,
-    input logic [2:0] funct3,
+    input  logic [31:0] rs1,
+    input  logic [31:0] rs2,
+    input  logic [2:0]  funct3,
 
     output logic [31:0] result
 );
@@ -11,10 +11,10 @@ logic signed [63:0] multiplicand;
 logic signed [63:0] multiplier;
 logic signed [63:0] product;
 
-localparam MUL = 3'b000;
-localparam MULH = 3'b001;
+localparam MUL    = 3'b000;
+localparam MULH   = 3'b001;
 localparam MULHSU = 3'b010;
-localparam MULHU = 3'b011;
+localparam MULHU  = 3'b011;
 
 always_comb begin
     case (funct3) 

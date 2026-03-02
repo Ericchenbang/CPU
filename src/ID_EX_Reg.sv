@@ -11,29 +11,29 @@ module ID_EX_Reg(
     input [31:0] ID_imm,
 
     // Register addresses (for forwarding)
-    input [4:0] ID_rs1,
-    input [4:0] ID_rs2,
-    input [4:0] ID_rd,
-    input [2:0] ID_funct3,
+    input [4:0]  ID_rs1,
+    input [4:0]  ID_rs2,
+    input [4:0]  ID_rd,
+    input [2:0]  ID_funct3,
 
     // Control signals from ID
-    input [3:0] ID_ALUControl,
-    input [1:0] ID_ALUSrcA,
-    input       ID_ALUSrcB,
-    input       ID_MemWrite,
-    input       ID_MemRead,
-    input       ID_RegWrite,
-    input [1:0] ID_ResultSrc,
+    input [3:0]  ID_ALUControl,
+    input [1:0]  ID_ALUSrcA,
+    input        ID_ALUSrcB,
+    input        ID_MemWrite,
+    input        ID_MemRead,
+    input        ID_RegWrite,
+    input [1:0]  ID_ResultSrc,
 
-    input logic ID_Branch,
-    input logic ID_Jal,
-    input logic ID_Jalr,
-    input logic [31:0] ID_pc_imm,
+    input        ID_Branch,
+    input        ID_Jal,
+    input        ID_Jalr,
+    input [31:0] ID_pc_imm,
 
-    input logic ID_predicted_taken,
+    input        ID_predicted_taken,
 
-    input logic [6:0] ID_funct7,
-    input logic ID_is_m_extension,
+    input [6:0]  ID_funct7,
+    input        ID_is_m_extension,
 
     // Data outputs to EX stage
     output logic [31:0] EX_PC,
@@ -43,29 +43,29 @@ module ID_EX_Reg(
     output logic [31:0] EX_imm,
 
     // Register addresses
-    output logic [4:0] EX_rs1,
-    output logic [4:0] EX_rs2,
-    output logic [4:0] EX_rd,
-    output logic [2:0] EX_funct3,
+    output logic [4:0]  EX_rs1,
+    output logic [4:0]  EX_rs2,
+    output logic [4:0]  EX_rd,
+    output logic [2:0]  EX_funct3,
 
     // Control signals to EX
-    output logic [3:0] EX_ALUControl,
-    output logic [1:0] EX_ALUSrcA,
-    output logic       EX_ALUSrcB,
-    output logic       EX_MemWrite,
-    output logic       EX_MemRead,
-    output logic       EX_RegWrite,
-    output logic [1:0] EX_ResultSrc,
+    output logic [3:0]  EX_ALUControl,
+    output logic [1:0]  EX_ALUSrcA,
+    output logic        EX_ALUSrcB,
+    output logic        EX_MemWrite,
+    output logic        EX_MemRead,
+    output logic        EX_RegWrite,
+    output logic [1:0]  EX_ResultSrc,
 
-    output logic EX_Branch,
-    output logic EX_Jal,
-    output logic EX_Jalr,
+    output logic        EX_Branch,
+    output logic        EX_Jal,
+    output logic        EX_Jalr,
     output logic [31:0] EX_pc_imm,
 
-    output logic EX_predicted_taken,
+    output logic        EX_predicted_taken,
 
-    output logic [6:0] EX_funct7,
-    output logic EX_is_m_extension
+    output logic [6:0]  EX_funct7,
+    output logic        EX_is_m_extension
 );
 
 

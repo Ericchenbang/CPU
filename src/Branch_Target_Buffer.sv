@@ -5,34 +5,34 @@ module Branch_Target_Buffer #(
     input logic rst,
 
     // Lookup interface (in IF stage)
-    input logic [31:0] IF_PC,
+    input  logic [31:0] IF_PC,
     output logic [31:0] predicted_target,
-    output logic hit,       // Is this PC in the BTB ?
+    output logic        hit,       // Is this PC in the BTB ?
 
     // Update interface (in EX stage)
-    input logic update_enable,
+    input logic        update_enable,
     input logic [31:0] update_PC,
     input logic [31:0] actual_target
 );
 
 // BTB entries
 typedef struct packed {
-    logic valid;
+    logic                           valid;
     logic [31:0 - INDEX_BITS - 2:0] tag;
-    logic [31:0] target;
+    logic [31:0]                    target;
 } btb_entry_t;
 
 btb_entry_t BTB [0: (2**INDEX_BITS) - 1];
 
-logic [INDEX_BITS - 1:0] lookup_index;
-logic [INDEX_BITS - 1:0] update_index;
+logic [INDEX_BITS - 1:0]        lookup_index;
+logic [INDEX_BITS - 1:0]        update_index;
 logic [31:0 - INDEX_BITS - 2:0] lookup_tag;
 logic [31:0 - INDEX_BITS - 2:0] update_tag;
 
 assign lookup_index = IF_PC[INDEX_BITS + 1:2];
 assign update_index = update_PC[INDEX_BITS + 1:2];
-assign lookup_tag = IF_PC[31:INDEX_BITS + 2];
-assign update_tag = update_PC[31:INDEX_BITS + 2];
+assign lookup_tag   = IF_PC[31:INDEX_BITS + 2];
+assign update_tag   = update_PC[31:INDEX_BITS + 2];
 
 // Lookup
 assign hit = BTB[lookup_index].valid && (BTB[lookup_index].tag == lookup_tag);

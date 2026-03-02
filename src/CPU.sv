@@ -65,31 +65,31 @@ logic [31:0] ID_rs2_data;
 logic [31:0] ID_imm;
 
 /** Control Unit */
-logic [1:0] ID_ALUOp;
-logic [1:0] ID_ALUSrcA;
-logic ID_ALUSrcB;
-logic ID_Branch;
-logic ID_Jal;
-logic ID_Jalr;
-logic ID_MemWrite;
-logic ID_MemRead;
-logic ID_RegWrite;
-logic [1:0] ID_ResultSrc;
-// logic ID_FALUEnable;
+logic [1:0]  ID_ALUOp;
+logic [1:0]  ID_ALUSrcA;
+logic        ID_ALUSrcB;
+logic        ID_Branch;
+logic        ID_Jal;
+logic        ID_Jalr;
+logic        ID_MemWrite;
+logic        ID_MemRead;
+logic        ID_RegWrite;
+logic [1:0]  ID_ResultSrc;
+// logic     ID_FALUEnable;
 
 /** ALU Control Unit */
-logic [3:0] ID_ALUControl;
+logic [3:0]  ID_ALUControl;
 
 /** Branch decision signals */
 logic [31:0] ID_pc_imm;
 
-
-logic ID_is_m_extension;
+/** For M extension */
+logic        ID_is_m_extension;
 
 //----------------------//
 // ID/EX Pipeline Reg   //
 //----------------------//
-logic ID_EX_flush;
+logic        ID_EX_flush;
 
 logic [31:0] EX_PC;
 logic [31:0] EX_pc4;

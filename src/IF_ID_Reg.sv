@@ -8,13 +8,13 @@ module IF_ID_Reg(
     input [31:0] IF_pc4,
     input [31:0] IF_instr,
 
-    input logic IF_predicted_taken,
+    input        IF_predicted_taken,
 
     output logic [31:0] ID_PC,
     output logic [31:0] ID_pc4,
     output logic [31:0] ID_instr,
 
-    output logic ID_predicted_taken
+    output logic        ID_predicted_taken
 );
 
 always_ff @(posedge clk or posedge rst) begin

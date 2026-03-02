@@ -28,7 +28,7 @@ logic [31:0] im_rdata;
 
 logic [31:0] dm_addr;
 logic [31:0] dm_wdata;
-logic [3:0] dm_web;
+logic [3:0]  dm_web;
 logic [31:0] dm_rdata;
 
 // --------------------------//
