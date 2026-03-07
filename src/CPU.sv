@@ -132,7 +132,7 @@ logic [31:0] EX_alu_in1;
 logic [31:0] EX_alu_in2;
 logic [31:0] EX_alu_result;
 
-logic [31;0] EX_mul_result;
+logic [31:0] EX_mul_result;
 logic [31:0] EX_div_result;
 
 logic        EX_eq;
@@ -544,6 +544,13 @@ Multiplier u_multiplier(
     .rs2(EX_forward_rs2),
     .funct3(EX_funct3),
     .result(EX_mul_result)
+);
+
+Divider u_divider(
+    .rs1(EX_forward_rs1),
+    .rs2(EX_forward_rs2),
+    .funct3(EX_funct3),
+    .result(EX_div_result)
 );
 
 always_comb begin
