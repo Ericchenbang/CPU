@@ -16,6 +16,14 @@ module CPU(
 //////////////////////////////////////////
 // Signal Declaration                   //
 //////////////////////////////////////////
+
+//----------------------//
+// CSR                  //
+//----------------------//
+logic [31:0] csr_rdata;
+logic [63:0] cycle_count;
+logic [63:0] instret_count;
+
 //----------------------//
 // IF Stage Signals     //
 //----------------------//
@@ -76,6 +84,7 @@ logic        ID_MemRead;
 logic        ID_RegWrite;
 logic [1:0]  ID_ResultSrc;
 // logic     ID_FALUEnable;
+logic        ID_is_csr;
 
 /** ALU Control Unit */
 logic [3:0]  ID_ALUControl;
@@ -115,6 +124,7 @@ logic        EX_MemWrite;
 logic        EX_MemRead;
 logic        EX_RegWrite;
 logic [1:0]  EX_ResultSrc;
+logic        EX_is_csr;
 
 // For prediction recovery
 logic        EX_predicted_taken;
@@ -149,12 +159,16 @@ logic [31:0] EX_forward_rs2;
 
 logic [31:0] EX_result;
 
+// CSR
+logic [31:0] EX_csr_rdata;
+
 //----------------------//
 // EX/MEM Pipeline Reg  //
 //----------------------//
 logic [31:0] MEM_pc4;
 logic [31:0] MEM_alu_result;
 logic [31:0] MEM_rs2_data;
+logic [31:0] MEM_csr_rdata;
 logic [4:0]  MEM_rd;
 logic [2:0]  MEM_funct3;
 logic        MEM_MemWrite;
@@ -174,6 +188,7 @@ logic [31:0] MEM_load_data;
 logic [31:0] WB_pc4;
 logic [31:0] WB_alu_result;
 logic [31:0] WB_load_data;
+logic [31:0] WB_csr_rdata;
 logic [4:0]  WB_rd;
 logic        WB_RegWrite;
 logic [1:0]  WB_ResultSrc;
@@ -182,9 +197,6 @@ logic [1:0]  WB_ResultSrc;
 // WB                   //
 //----------------------//
 logic [31:0] WB_write_data;
-
-
-
 
 
 
@@ -234,6 +246,26 @@ Branch_Target_Buffer #(
     .update_PC(EX_PC),
     .actual_target(actual_branch_target)
 );
+
+
+//----------------------//
+// CSR Module           //
+//----------------------//
+CSR u_csr(
+    .clk(clk),
+    .rst(rst),
+
+    .instret_inc(WB_RegWrite),
+
+    .csr_addr(EX_imm[11:0]),
+    .csr_rdata(csr_rdata),
+
+    .cycle_count(cycle_count),
+    .instret_count(instret_count)
+);
+
+// Store CSR data in EX stage for pipeline
+assign EX_csr_rdata = csr_rdata;
 
 
 //----------------------//
@@ -379,7 +411,8 @@ Control_Unit u_ctrl(
     .MemRead(ID_MemRead),
     .ResultSrc(ID_ResultSrc),
     .RegWrite(ID_RegWrite),
-    .FALUEnable()
+    .FALUEnable(),
+    .is_csr(ID_is_csr)
 );
 
 ALU_Control_Unit u_aluctrl(
@@ -426,6 +459,11 @@ ID_EX_Reg u_ID_EX_Reg(
 
     .ID_predicted_taken(ID_predicted_taken),
 
+    .ID_funct7(ID_funct7),
+    .ID_is_m_extension(ID_is_m_extension),
+
+    .ID_is_csr(ID_is_csr),
+
     .EX_PC(EX_PC),
     .EX_pc4(EX_pc4),
     .EX_rs1_data(EX_rs1_data),
@@ -450,7 +488,12 @@ ID_EX_Reg u_ID_EX_Reg(
     .EX_Jalr(EX_Jalr),
     .EX_pc_imm(EX_pc_imm),
 
-    .EX_predicted_taken(EX_predicted_taken)
+    .EX_predicted_taken(EX_predicted_taken),
+
+    .EX_funct7(EX_funct7),
+    .EX_is_m_extension(EX_is_m_extension),
+
+    .EX_is_csr(EX_is_csr)
 );
 
 //----------------------//
@@ -578,6 +621,7 @@ EX_MEM_Reg u_EX_MEM_Reg(
     .EX_pc4(EX_pc4),
     .EX_alu_result(EX_result),
     .EX_rs2_data(EX_forward_rs2),
+    .EX_csr_rdata(EX_csr_rdata),
     .EX_rd(EX_rd),
     .EX_funct3(EX_funct3),
     .EX_MemWrite(EX_MemWrite),
@@ -588,6 +632,7 @@ EX_MEM_Reg u_EX_MEM_Reg(
     .MEM_pc4(MEM_pc4),
     .MEM_alu_result(MEM_alu_result),
     .MEM_rs2_data(MEM_rs2_data),
+    .MEM_csr_rdata(MEM_csr_rdata),
     .MEM_rd(MEM_rd),
     .MEM_funct3(MEM_funct3),
     .MEM_MemWrite(MEM_MemWrite),
@@ -632,6 +677,7 @@ MEM_WB_Reg u_MEM_WB_Reg(
     .MEM_pc4(MEM_pc4),
     .MEM_alu_result(MEM_alu_result),
     .MEM_load_data(MEM_load_data),
+    .MEM_csr_rdata(MEM_csr_rdata),
     .MEM_rd(MEM_rd),
     .MEM_RegWrite(MEM_RegWrite),
     .MEM_ResultSrc(MEM_ResultSrc),
@@ -639,6 +685,7 @@ MEM_WB_Reg u_MEM_WB_Reg(
     .WB_pc4(WB_pc4),
     .WB_alu_result(WB_alu_result),
     .WB_load_data(WB_load_data),
+    .WB_csr_rdata(WB_csr_rdata),
     .WB_rd(WB_rd),
     .WB_RegWrite(WB_RegWrite),
     .WB_ResultSrc(WB_ResultSrc)
@@ -653,6 +700,7 @@ always_comb begin
         2'b00: WB_write_data = WB_alu_result;
         2'b01: WB_write_data = WB_load_data;
         2'b10: WB_write_data = WB_pc4;
+        2'b11: WB_write_data = WB_csr_rdata;
         default: WB_write_data = 32'b0;
     endcase
 end

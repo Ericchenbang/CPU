@@ -7,6 +7,9 @@ module MEM_WB_Reg(
     input [31:0] MEM_alu_result,
     input [31:0] MEM_load_data,
 
+    // CSR
+    input [31:0] MEM_csr_rdata,
+
     // Metadata
     input [4:0]  MEM_rd,
 
@@ -18,6 +21,9 @@ module MEM_WB_Reg(
     output logic [31:0] WB_pc4,
     output logic [31:0] WB_alu_result,
     output logic [31:0] WB_load_data,
+
+    // CSR
+    output logic [31:0] WB_csr_rdata,
 
     // Metadata
     output logic [4:0]  WB_rd,
@@ -33,6 +39,8 @@ always_ff @(posedge clk or posedge rst) begin
         WB_alu_result   <= 32'b0;
         WB_load_data    <= 32'b0;
 
+        WB_csr_rdata    <= 32'b0;
+
         WB_rd           <= 5'b0;
 
         WB_RegWrite     <= 1'b0;
@@ -42,6 +50,8 @@ always_ff @(posedge clk or posedge rst) begin
         WB_pc4          <= MEM_pc4;
         WB_alu_result   <= MEM_alu_result;
         WB_load_data    <= MEM_load_data;
+
+        WB_csr_rdata    <= MEM_csr_rdata;
 
         WB_rd           <= MEM_rd;
 

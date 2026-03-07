@@ -31,9 +31,11 @@ module ID_EX_Reg(
     input [31:0] ID_pc_imm,
 
     input        ID_predicted_taken,
-
+    // mul
     input [6:0]  ID_funct7,
     input        ID_is_m_extension,
+    // CSR
+    input        ID_is_csr,
 
     // Data outputs to EX stage
     output logic [31:0] EX_PC,
@@ -63,105 +65,113 @@ module ID_EX_Reg(
     output logic [31:0] EX_pc_imm,
 
     output logic        EX_predicted_taken,
-
+    // mul
     output logic [6:0]  EX_funct7,
-    output logic        EX_is_m_extension
+    output logic        EX_is_m_extension,
+    // CSR
+    output logic        EX_is_csr
 );
 
 
 always_ff @(posedge clk or posedge rst) begin
     if (rst) begin
-        EX_PC       <= 32'b0;
-        EX_pc4      <= 32'b0;
-        EX_rs1_data <= 32'b0;
-        EX_rs2_data <= 32'b0;
-        EX_imm      <= 32'b0;
+        EX_PC               <= 32'b0;
+        EX_pc4              <= 32'b0;
+        EX_rs1_data         <= 32'b0;
+        EX_rs2_data         <= 32'b0;
+        EX_imm              <= 32'b0;
 
-        EX_rs1      <= 5'b0;
-        EX_rs2      <= 5'b0;
-        EX_rd       <= 5'b0;
-        EX_funct3   <= 3'b0;
+        EX_rs1              <= 5'b0;
+        EX_rs2              <= 5'b0;
+        EX_rd               <= 5'b0;
+        EX_funct3           <= 3'b0;
 
-        EX_ALUControl <= 4'b0;
-        EX_ALUSrcA  <= 2'b0;
-        EX_ALUSrcB  <= 1'b0;
+        EX_ALUControl       <= 4'b0;
+        EX_ALUSrcA          <= 2'b0;
+        EX_ALUSrcB          <= 1'b0;
 
-        EX_MemWrite <= 1'b0;
-        EX_MemRead  <= 1'b0;
-        EX_RegWrite <= 1'b0;
-        EX_ResultSrc <= 2'b0;
+        EX_MemWrite         <= 1'b0;
+        EX_MemRead          <= 1'b0;
+        EX_RegWrite         <= 1'b0;
+        EX_ResultSrc        <= 2'b0;
 
-        EX_Branch   <= 1'b0;
-        EX_Jal      <= 1'b0;
-        EX_Jalr     <= 1'b0;
-        EX_pc_imm   <= 32'b0;
+        EX_Branch           <= 1'b0;
+        EX_Jal              <= 1'b0;
+        EX_Jalr             <= 1'b0;
+        EX_pc_imm           <= 32'b0;
 
-        EX_predicted_taken <= 1'b0;
+        EX_predicted_taken  <= 1'b0;
 
-        EX_funct7 <= 7'b0;
-        EX_is_m_extension <= 1'b0;
+        EX_funct7           <= 7'b0;
+        EX_is_m_extension   <= 1'b0;
+
+        EX_is_csr           <= 1'b0;
     end
     else if (flush) begin
-        EX_PC       <= 32'b0;
-        EX_pc4      <= 32'b0;
-        EX_rs1_data <= 32'b0;
-        EX_rs2_data <= 32'b0;
-        EX_imm      <= 32'b0;
+        EX_PC               <= 32'b0;
+        EX_pc4              <= 32'b0;
+        EX_rs1_data         <= 32'b0;
+        EX_rs2_data         <= 32'b0;
+        EX_imm              <= 32'b0;
 
-        EX_rs1      <= 5'b0;
-        EX_rs2      <= 5'b0;
-        EX_rd       <= 5'b0;
-        EX_funct3   <= 3'b0;
+        EX_rs1              <= 5'b0;
+        EX_rs2              <= 5'b0;
+        EX_rd               <= 5'b0;
+        EX_funct3           <= 3'b0;
 
-        EX_ALUControl <= 4'b0;
-        EX_ALUSrcA  <= 2'b0;
-        EX_ALUSrcB  <= 1'b0;
+        EX_ALUControl       <= 4'b0;
+        EX_ALUSrcA          <= 2'b0;
+        EX_ALUSrcB          <= 1'b0;
 
-        EX_MemWrite <= 1'b0;
-        EX_MemRead  <= 1'b0;
-        EX_RegWrite <= 1'b0;
-        EX_ResultSrc <= 2'b0;
+        EX_MemWrite         <= 1'b0;
+        EX_MemRead          <= 1'b0;
+        EX_RegWrite         <= 1'b0;
+        EX_ResultSrc        <= 2'b0;
 
-        EX_Branch   <= 1'b0;
-        EX_Jal      <= 1'b0;
-        EX_Jalr     <= 1'b0;
-        EX_pc_imm   <= 32'b0;
+        EX_Branch           <= 1'b0;
+        EX_Jal              <= 1'b0;
+        EX_Jalr             <= 1'b0;
+        EX_pc_imm           <= 32'b0;
 
-        EX_predicted_taken <= 1'b0;
+        EX_predicted_taken  <= 1'b0;
 
-        EX_funct7 <= 7'b0;
-        EX_is_m_extension <= 1'b0;
+        EX_funct7           <= 7'b0;
+        EX_is_m_extension   <= 1'b0;
+
+        EX_is_csr           <= 1'b0;
     end
     else begin
-        EX_PC       <= ID_PC;
-        EX_pc4      <= ID_pc4;
-        EX_rs1_data <= ID_rs1_data;
-        EX_rs2_data <= ID_rs2_data;
-        EX_imm      <= ID_imm;
+        EX_PC               <= ID_PC;
+        EX_pc4              <= ID_pc4;
+        EX_rs1_data         <= ID_rs1_data;
+        EX_rs2_data         <= ID_rs2_data;
+        EX_imm              <= ID_imm;
 
-        EX_rs1      <= ID_rs1;
-        EX_rs2      <= ID_rs2;
-        EX_rd       <= ID_rd;
-        EX_funct3   <= ID_funct3;
+        EX_rs1              <= ID_rs1;
+        EX_rs2              <= ID_rs2;
+        EX_rd               <= ID_rd;
+        EX_funct3           <= ID_funct3;
 
-        EX_ALUControl <= ID_ALUControl;
-        EX_ALUSrcA  <= ID_ALUSrcA;
-        EX_ALUSrcB  <= ID_ALUSrcB;
+        EX_ALUControl       <= ID_ALUControl;
+        EX_ALUSrcA          <= ID_ALUSrcA;
+        EX_ALUSrcB          <= ID_ALUSrcB;
 
-        EX_MemWrite <= ID_MemWrite;
-        EX_MemRead  <= ID_MemRead;
-        EX_RegWrite <= ID_RegWrite;
-        EX_ResultSrc <= ID_ResultSrc;
+        EX_MemWrite         <= ID_MemWrite;
+        EX_MemRead          <= ID_MemRead;
+        EX_RegWrite         <= ID_RegWrite;
+        EX_ResultSrc        <= ID_ResultSrc;
 
-        EX_Branch   <= ID_Branch;
-        EX_Jal      <= ID_Jal;
-        EX_Jalr     <= ID_Jalr;
-        EX_pc_imm   <= ID_pc_imm;
+        EX_Branch           <= ID_Branch;
+        EX_Jal              <= ID_Jal;
+        EX_Jalr             <= ID_Jalr;
+        EX_pc_imm           <= ID_pc_imm;
 
-        EX_predicted_taken <= ID_predicted_taken;
+        EX_predicted_taken  <= ID_predicted_taken;
 
-        EX_funct7 <= ID_funct7;
-        EX_is_m_extension <= ID_is_m_extension;
+        EX_funct7           <= ID_funct7;
+        EX_is_m_extension   <= ID_is_m_extension;
+
+        EX_is_csr           <= ID_is_csr;
     end
 end
 

@@ -6,6 +6,8 @@ module EX_MEM_Reg(
     input [31:0] EX_pc4,
     input [31:0] EX_alu_result,
     input [31:0] EX_rs2_data,
+    // CSR
+    input [31:0] EX_csr_rdata,
 
     // Metadata
     input [4:0]  EX_rd,
@@ -17,10 +19,13 @@ module EX_MEM_Reg(
     input        EX_RegWrite,
     input [1:0]  EX_ResultSrc,
 
+
     // Data outputs to MEM stage
     output logic [31:0] MEM_pc4,
     output logic [31:0] MEM_alu_result,
     output logic [31:0] MEM_rs2_data,
+    // CSR
+    output logic [31:0] MEM_csr_rdata,
 
     // Metadata
     output logic [4:0]  MEM_rd,
@@ -38,6 +43,8 @@ always_ff @(posedge clk or posedge rst) begin
         MEM_pc4         <= 32'b0;
         MEM_alu_result  <= 32'b0;
         MEM_rs2_data    <= 32'b0;
+
+        MEM_csr_rdata   <= 32'b0;
         
         MEM_rd          <= 5'b0;
         MEM_funct3      <= 3'b0;
@@ -51,6 +58,8 @@ always_ff @(posedge clk or posedge rst) begin
         MEM_pc4         <= EX_pc4;
         MEM_alu_result  <= EX_alu_result;
         MEM_rs2_data    <= EX_rs2_data;
+
+        MEM_csr_rdata   <= EX_csr_rdata;
         
         MEM_rd          <= EX_rd;
         MEM_funct3      <= EX_funct3;
