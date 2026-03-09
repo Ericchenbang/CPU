@@ -161,6 +161,8 @@ logic [31:0] EX_result;
 
 // CSR
 logic [31:0] EX_csr_rdata;
+logic [31:0] EX_csr_wdata;
+logic        EX_csr_we;
 
 //----------------------//
 // EX/MEM Pipeline Reg  //
@@ -260,13 +262,22 @@ CSR u_csr(
     .csr_addr(EX_imm[11:0]),
     .csr_rdata(csr_rdata),
 
+    .csr_we(EX_csr_we),
+    .csr_op(EX_funct3),
+    .csr_wdata(EX_csr_wdata),
+
     .cycle_count(cycle_count),
     .instret_count(instret_count)
 );
 
 // Store CSR data in EX stage for pipeline
 assign EX_csr_rdata = csr_rdata;
+assign EX_csr_wdata = EX_forward_rs1;
 
+assign EX_csr_we = EX_is_csr && (
+    (EX_funct3 == 3'b001) || 
+    ((EX_funct3 == 3'b010 || EX_funct3 == 3'b011) && EX_rs1 != 5'b0)
+);
 
 //----------------------//
 // IF State Logic       //
