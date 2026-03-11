@@ -15,8 +15,11 @@ module Control_Unit(
                                      // 2: PC + 4 (JALR, JAL), 3: use CSR data
     
     output logic        RegWrite,
-    output logic        FALUEnable,  // 0: not float operation, 1: need Float ALU
-    output logic        is_csr
+
+    output logic        is_csr,
+
+    output logic        FPRegWrite; // Use FP register file for read/write 
+    output logic        FPALULUse;   // Use FP ALU instead of integer ALU
 );
  
 always_comb begin
@@ -30,8 +33,9 @@ always_comb begin
     MemRead     = 1'b0;
     ResultSrc   = 2'b00;
     RegWrite    = 1'b0;
-    FALUEnable  = 1'b0;
     is_csr      = 1'b0;
+    FPRegWrite  = 1'b0;
+    FPALUUse    = 1'b0;
 
     case (opcode)
         // R-type
@@ -87,38 +91,39 @@ always_comb begin
             ResultSrc = 2'b10;
             RegWrite  = 1'b1;
         end
-        /*
-        // FADD.S, FSUB.S
-        7'b1010011: begin
-            ALUOp = 2'b10;
-            ResultSrc = 2'b00;
-            RegWrite = 1'b1;
-            FALUEnable = 1'b1;
-        end
-        // FLW
-        7'b0000111: begin
-            ALUSrcB = 1'b1;
-            MemRead = 1'b1;
-            ResultSrc = 2'b01;
-            RegWrite = 1'b1;
-            FALUEnable = 1'b0;
-        end
-        // FSW
-        7'b0100111: begin
-            ALUSrcB = 1'b1;
-            MemWrite = 1'b1;
-            ResultSrc = 'x;
-            RegWrite = 1'b0;
-            FALUEnable = 1'b0;
-        end
-        */
         // CSR
         7'b111_0011: begin
             is_csr    = 1'b1;
             RegWrite  = 1'b1;
             ResultSrc = 2'b11;
         end
-
+        
+        // FLW
+        7'b000_0111: begin
+            ALUSrcB     = 1'b1;
+            MemRead     = 1'b1;
+            ResultSrc   = 2'b01;
+            RegWrite    = 1'b1;
+            FPRegWrite  = 1'b1;
+            //FPALUUse  = 1'b0;   // Use integer ALU for address
+        end
+        // FSW
+        7'b0100111: begin
+            ALUSrcB     = 1'b1;
+            MemWrite    = 1'b1;
+            FPRegWrite  = 1'b1;
+            //FPALUUse  = 1'b0;     // Use integer ALU for address
+        end
+        // FADD.S, FSUB.S
+        7'b101_0011: begin
+            ALUOp       = 2'b10;
+            ResultSrc   = 2'b00;
+            RegWrite    = 1'b1;
+            FPRegWrite  = 1'b1;
+            FPALUUse    = 1'b1;
+        end
+        
+       
     endcase
 end
 

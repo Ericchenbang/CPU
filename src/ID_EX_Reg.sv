@@ -36,6 +36,11 @@ module ID_EX_Reg(
     input        ID_is_m_extension,
     // CSR
     input        ID_is_csr,
+    // FP signal
+    input [31:0] ID_fp_rs1_data,
+    input [31:0] ID_fp_rs2_data,
+    input        ID_FPRegWrite,
+    input        ID_FPALUUse,
 
     // Data outputs to EX stage
     output logic [31:0] EX_PC,
@@ -69,7 +74,12 @@ module ID_EX_Reg(
     output logic [6:0]  EX_funct7,
     output logic        EX_is_m_extension,
     // CSR
-    output logic        EX_is_csr
+    output logic        EX_is_csr,
+    // FP signal
+    output logic [31:0] EX_fp_rs1_data,
+    output logic [31:0] EX_fp_rs2_data,
+    output logic        EX_FPRegWrite,
+    output logic        EX_FPALUUse,
 );
 
 
@@ -106,6 +116,11 @@ always_ff @(posedge clk or posedge rst) begin
         EX_is_m_extension   <= 1'b0;
 
         EX_is_csr           <= 1'b0;
+
+        EX_fp_rs1_data      <= 32'b0;
+        EX_fp_rs2_data      <= 32'b0;
+        EX_FPRegWrite       <= 1'b0;
+        EX_FPALUUse         <= 1'b0;
     end
     else if (flush) begin
         EX_PC               <= 32'b0;
@@ -139,6 +154,11 @@ always_ff @(posedge clk or posedge rst) begin
         EX_is_m_extension   <= 1'b0;
 
         EX_is_csr           <= 1'b0;
+
+        EX_fp_rs1_data      <= 32'b0;
+        EX_fp_rs2_data      <= 32'b0;
+        EX_FPRegWrite       <= 1'b0;
+        EX_FPALUUse         <= 1'b0;
     end
     else begin
         EX_PC               <= ID_PC;
@@ -172,6 +192,11 @@ always_ff @(posedge clk or posedge rst) begin
         EX_is_m_extension   <= ID_is_m_extension;
 
         EX_is_csr           <= ID_is_csr;
+
+        EX_fp_rs1_data      <= ID_fp_rs1_data;
+        EX_fp_rs2_data      <= ID_fp_rs2_data;
+        EX_FPRegWrite       <= ID_FPRegWrite;
+        EX_FPALUUse         <= ID_FPALUUse;
     end
 end
 

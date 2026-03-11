@@ -13,9 +13,9 @@ module CPU(
     input  logic [31:0] dm_rdata     // read data
 );
 
-//////////////////////////////////////////
-// Signal Declaration                   //
-//////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Signal Declaration                   
+////////////////////////////////////////////////////////////////////////////////
 
 //----------------------//
 // CSR                  //
@@ -83,8 +83,9 @@ logic        ID_MemWrite;
 logic        ID_MemRead;
 logic        ID_RegWrite;
 logic [1:0]  ID_ResultSrc;
-// logic     ID_FALUEnable;
 logic        ID_is_csr;
+logic        ID_FPRegWrite;
+logic        ID_FPALUUse;
 
 /** ALU Control Unit */
 logic [3:0]  ID_ALUControl;
@@ -94,6 +95,12 @@ logic [31:0] ID_pc_imm;
 
 /** For M extension */
 logic        ID_is_m_extension;
+
+
+/** FP Register File*/
+logic [31:0] ID_fp_rs1_data;
+logic [31:0] ID_fp_rs2_data;
+
 
 //----------------------//
 // ID/EX Pipeline Reg   //
@@ -164,6 +171,13 @@ logic [31:0] EX_csr_rdata;
 logic [31:0] EX_csr_wdata;
 logic        EX_csr_we;
 
+/** FP signals */
+logic [31:0] EX_fp_rs1_data;
+logic [31:0] EX_fp_rs2_data;
+logic        EX_FPRegWrite;
+logic        EX_FPALUUse;
+logic [31:0] EX_fp_result;
+
 //----------------------//
 // EX/MEM Pipeline Reg  //
 //----------------------//
@@ -183,6 +197,12 @@ logic [1:0]  MEM_ResultSrc;
 //----------------------//
 logic [31:0] MEM_load_data;
 
+logic [31:0] MEM_fp_rs2_data;
+logic [31:0] MEM_fp_result;
+logic [31:0] MEM_fp_load_data;
+logic        MEM_FPRegWrite;
+
+logic [31:0] MEM_final_store_data;
 
 //----------------------//
 // MEM/WB Pipeline Reg  //
@@ -200,11 +220,18 @@ logic [1:0]  WB_ResultSrc;
 //----------------------//
 logic [31:0] WB_write_data;
 
+logic [31:0] WB_fp_load_data;
+logic [31:0] WB_fp_result;
+logic        WB_FPRegWrite;
+logic [31:0] WB_fp_write_data;
 
 
-//////////////////////////////////////////////////
-// Logic                                        //
-//////////////////////////////////////////////////
+
+
+
+////////////////////////////////////////////////////////////////////////////////////
+// Logic                                        
+////////////////////////////////////////////////////////////////////////////////////
 
 //----------------------//
 // Branch Predictor     //
@@ -400,6 +427,20 @@ regfile u_regfile(
     .rd_data(WB_write_data)
 );
 
+FP_Regfile u_fp_regfile(
+    .clk(clk),
+    .rst(rst),
+
+    .rs1_addr(ID_rs1),
+    .rs2_addr(ID_rs2),
+    .rs1_data(ID_fp_rs1_data),
+    .rs2_data(ID_fp_rs2_data),
+
+    .we(WB_RegWrite && WB_FPRegWrite),
+    .rd_addr(WB_rd),
+    .rd_data(WB_fp_result)
+);
+
 imm_gen u_imm(
     .instr(ID_instr),
 
@@ -422,8 +463,9 @@ Control_Unit u_ctrl(
     .MemRead(ID_MemRead),
     .ResultSrc(ID_ResultSrc),
     .RegWrite(ID_RegWrite),
-    .FALUEnable(),
-    .is_csr(ID_is_csr)
+    .is_csr(ID_is_csr),
+    .FPRegWrite(ID_FPRegWrite),
+    .FPALUUse(ID_FPALUUse)
 );
 
 ALU_Control_Unit u_aluctrl(
@@ -475,6 +517,11 @@ ID_EX_Reg u_ID_EX_Reg(
 
     .ID_is_csr(ID_is_csr),
 
+    .ID_fp_rs1_data(ID_fp_rs1_data),
+    .ID_fp_rs2_data(ID_fp_rs2_data),
+    .ID_FPRegWrite(ID_FPRegWrite),
+    .ID_FPALUUse(ID_FPALUUse),
+
     .EX_PC(EX_PC),
     .EX_pc4(EX_pc4),
     .EX_rs1_data(EX_rs1_data),
@@ -504,7 +551,12 @@ ID_EX_Reg u_ID_EX_Reg(
     .EX_funct7(EX_funct7),
     .EX_is_m_extension(EX_is_m_extension),
 
-    .EX_is_csr(EX_is_csr)
+    .EX_is_csr(EX_is_csr),
+
+    .EX_fp_rs1_data(EX_fp_rs1_data),
+    .EX_fp_rs2_data(EX_FPRegWrite),
+    .EX_FPRegWrite(EX_FPRegWrite),
+    .EX_FPALUUse(EX_FPALUUse)
 );
 
 //----------------------//
@@ -621,6 +673,7 @@ always_comb begin
     end
 end
 
+assign EX_fp_result = 32'h3F80_0000;
 
 //----------------------//
 // EX/MEM Pipeline Reg  //
@@ -640,6 +693,10 @@ EX_MEM_Reg u_EX_MEM_Reg(
     .EX_RegWrite(EX_RegWrite),
     .EX_ResultSrc(EX_ResultSrc),
 
+    .EX_fp_rs2_data(EX_fp_rs2_data),
+    .EX_fp_result(EX_fp_result),
+    .EX_FPRegWrite(EX_FPRegWrite),
+
     .MEM_pc4(MEM_pc4),
     .MEM_alu_result(MEM_alu_result),
     .MEM_rs2_data(MEM_rs2_data),
@@ -649,7 +706,11 @@ EX_MEM_Reg u_EX_MEM_Reg(
     .MEM_MemWrite(MEM_MemWrite),
     .MEM_MemRead(MEM_MemRead),
     .MEM_RegWrite(MEM_RegWrite),
-    .MEM_ResultSrc(MEM_ResultSrc)
+    .MEM_ResultSrc(MEM_ResultSrc),
+
+    .MEM_fp_rs2_data(MEM_fp_rs2_data),
+    .MEM_fp_result(MEM_fp_result),
+    .MEM_FPRegWrite(MEM_FPRegWrite)
 );
 
 
@@ -662,7 +723,7 @@ assign dm_addr = MEM_alu_result;
 store_data u_store_data(
     .funct3(MEM_funct3),
     .MemWrite(MEM_MemWrite),
-    .rs2_data(MEM_rs2_data),
+    .rs2_data(MEM_final_store_data),
     .alu_result(MEM_alu_result),
 
     .dm_web(dm_web),
@@ -676,6 +737,17 @@ load_data u_load_data(
     
     .load_data_final(MEM_load_data)
 );
+
+always_comb begin
+    if (MEM_FPRegWrite && MEM_MemWrite) begin
+        MEM_final_store_data = MEM_fp_rs2_data;
+    end
+    else begin
+        MEM_final_store_data = MEM_rs2_data;
+    end
+end
+
+assign MEM_fp_load_data = MEM_load_data;
 
 
 //----------------------//
@@ -693,19 +765,27 @@ MEM_WB_Reg u_MEM_WB_Reg(
     .MEM_RegWrite(MEM_RegWrite),
     .MEM_ResultSrc(MEM_ResultSrc),
 
+    .MEM_fp_load_data(MEM_fp_load_data),
+    .MEM_fp_result(MEM_fp_result),
+    .MEM_FPRegWrite(MEM_FPRegWrite),
+
     .WB_pc4(WB_pc4),
     .WB_alu_result(WB_alu_result),
     .WB_load_data(WB_load_data),
     .WB_csr_rdata(WB_csr_rdata),
     .WB_rd(WB_rd),
     .WB_RegWrite(WB_RegWrite),
-    .WB_ResultSrc(WB_ResultSrc)
+    .WB_ResultSrc(WB_ResultSrc),
+
+    .WB_fp_load_data(WB_fp_load_data),
+    .WB_fp_result(WB_fp_result),
+    .WB_FPRegWrite(WB_FPRegWrite)
 );
 
 //----------------------//
 // WB Stage             //
 //----------------------//
-// writeback mux 
+// integer writeback mux 
 always_comb begin
     case (WB_ResultSrc)
         2'b00: WB_write_data = WB_alu_result;
@@ -714,6 +794,20 @@ always_comb begin
         2'b11: WB_write_data = WB_csr_rdata;
         default: WB_write_data = 32'b0;
     endcase
+end
+
+// FP writeback mux
+always_comb begin
+    if (WB_FPRegWrite) begin
+        case (WB_ResultSrc)
+            2'b00: WB_fp_write_data = WB_fp_result;
+            2'b01: WB_fp_write_data = WB_fp_load_data;
+            default: WB_fp_write_data = 32'b0;
+        endcase
+    end
+    else begin
+        WB_fp_write_data = 32'b0;
+    end
 end
 
 endmodule

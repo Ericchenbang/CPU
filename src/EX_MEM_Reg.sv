@@ -19,6 +19,11 @@ module EX_MEM_Reg(
     input        EX_RegWrite,
     input [1:0]  EX_ResultSrc,
 
+    // FP signal
+    input [31:0] EX_fp_rs2_data,
+    input [31:0] EX_fp_result,
+    input        EX_FPRegWrite,
+
 
     // Data outputs to MEM stage
     output logic [31:0] MEM_pc4,
@@ -35,7 +40,12 @@ module EX_MEM_Reg(
     output logic        MEM_MemWrite,
     output logic        MEM_MemRead,
     output logic        MEM_RegWrite,
-    output logic [1:0]  MEM_ResultSrc
+    output logic [1:0]  MEM_ResultSrc,
+
+    // FP signal
+    output logic [31:0] MEM_fp_rs2_data,
+    output logic [31:0] MEM_fp_result,
+    output logic        MEM_FPRegWrite,
 );
 
 always_ff @(posedge clk or posedge rst) begin
@@ -53,6 +63,10 @@ always_ff @(posedge clk or posedge rst) begin
         MEM_MemRead     <= 1'b0;
         MEM_RegWrite    <= 1'b0;
         MEM_ResultSrc   <= 2'b0;
+
+        MEM_fp_rs2_data <= 32'b0;
+        MEM_fp_result   <= 32'b0;
+        MEM_FPRegWrite  <= 1'b0;
     end
     else begin
         MEM_pc4         <= EX_pc4;
@@ -68,6 +82,10 @@ always_ff @(posedge clk or posedge rst) begin
         MEM_MemRead     <= EX_MemRead;
         MEM_RegWrite    <= EX_RegWrite;
         MEM_ResultSrc   <= EX_ResultSrc;
+
+        MEM_fp_rs2_data <= EX_fp_rs2_data;
+        MEM_fp_result   <= EX_fp_result;
+        MEM_FPRegWrite  <= EX_FPRegWrite;
     end
 end
 
