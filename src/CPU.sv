@@ -177,6 +177,7 @@ logic [31:0] EX_fp_rs2_data;
 logic        EX_FPRegWrite;
 logic        EX_FPALUUse;
 logic [31:0] EX_fp_result;
+logic        EX_fp_sub;
 
 //----------------------//
 // EX/MEM Pipeline Reg  //
@@ -668,12 +669,23 @@ always_comb begin
             EX_result = EX_div_result;
         end
     end
+    else if (EX_FPALUUse) begin
+        EX_result = EX_fp_result;
+    end
     else begin
         EX_result = EX_alu_result;
     end
 end
 
-assign EX_fp_result = 32'h3F80_0000;
+// FADD.S: funct7 = 000_0000; FSUB.S: funct7 = 000_0100;
+assign EX_fp_sub = (EX_funct7 == 7'b000_0100);
+
+FP_Adder u_fp_adder(
+    .a(EX_fp_rs1_data),
+    .b(EX_fp_rs2_data),
+    .sub(EX_fp_sub),
+    .result(EX_fp_result)
+);
 
 //----------------------//
 // EX/MEM Pipeline Reg  //
